@@ -1,0 +1,41 @@
+export default async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  if (req.method === "OPTIONS") {
+    res.status(204).end();
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(200).json({ ok: false });
+    return;
+  }
+  const key = process.env.XAI_API_KEY;
+  if (!key) {
+    res.status(200).json({ ok: false });
+    return;
+  }
+  let voice = "eve";
+  try {
+    const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
+    if (body.voice === "ara" || body.voice === "leo") voice = "ara";
+  } catch (_) {}
+  try {
+    const r = await fetch("https://api.x.ai/v1/realtime/client_secrets", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        expires_after: { seconds: 300 },
+        session: { model: "grok-voice-latest", voice },
+      }),
+    });
+    const body = await r.json();
+    if (!r.ok || !body.value) {
+      res.status(200).json({ ok: false });
+      return;
+    }
+    res.status(200).json({ ok: true, token: body.value });
+  } catch (_) {
+    res.status(200).json({ ok: false });
+  }
+}
