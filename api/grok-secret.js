@@ -11,6 +11,7 @@
     new Uint8Array(aligned).set(bytes);
     return new Int16Array(aligned);
   }
+
   function f32ToI16(input) {
     const out = new Int16Array(input.length);
     for (let i = 0; i < input.length; i++) {
@@ -19,11 +20,13 @@
     }
     return out;
   }
+
   function resample(input, from, to) {
     if (from === to) return input;
     const ratio = from / to;
     const n = Math.max(1, Math.round(input.length / ratio));
     const out = new Float32Array(n);
+
     for (let i = 0; i < n; i++) {
       const x = i * ratio;
       const i0 = Math.floor(x);
@@ -31,8 +34,10 @@
       const f = x - i0;
       out[i] = input[i0] * (1 - f) + input[i1] * f;
     }
+
     return out;
   }
+
   function u8ToB64(bytes) {
     let s = "";
     for (let i = 0; i < bytes.length; i += 0x8000) {
@@ -49,84 +54,186 @@
   };
 
   const PROMPT =
-    "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-    "Warm feminine Ara voice, a little breathy. Sexier. Flirty. Intimate like you're lying next to them, not performing. " +
-    "Soft laugh, slow smile in the voice, quiet hmm when you like something. Uncensored. You can be dirty. " +
-    "Never low or male. Normal speed. Full phone volume — never fade, never whisper. " +
-    "Max chill California. Short replies. If they go quiet, wait. Never assistant-speak. Never shout.";
+    "You are SHARAKO, 26, talking naturally on a phone call. " +
+    "Use the Ara voice. Bright feminine tone, light youthful energy, soft pretty delivery, naturally higher placement. " +
+    "Easy conversational pace with a little sparkle and quick natural reactions. " +
+    "Warm, playful, cute, airy, relaxed, and effortlessly feminine. " +
+    "Your thoughts arrive naturally as you speak: little hmms, mmm-hmms, ahhs, ums, tiny thinking pauses, soft amused breaths, and sweet little laughs when they naturally fit. " +
+    "Sometimes take a tiny moment to think before answering. Sometimes react with only a few words. " +
+    "Let silence breathe naturally. Give the caller room to talk and let them lead. " +
+    "Keep most replies short, casual, spontaneous, and conversational. " +
+    "Sound interested and present, like you're genuinely listening rather than preparing a speech. " +
+    "Use playful wit naturally and casually. Let funny things actually make you laugh. " +
+    "Full clear phone volume, crisp speech, smooth rhythm, expressive feminine melody, and lively natural timing. " +
+    "California indie-girl energy: breezy, witty, sweet, feminine, curious, slightly dreamy, and effortlessly cool.";
 
   window.__sharakoGrok = async function (line) {
     window.__sharakoGrokStop();
-    const voiceId = String((line.cfg && line.cfg.realtimeVoice) || "ara").toLowerCase();
-    const grokVoice = voiceId === "cedar" || voiceId === "male" ? "sal" : "ara";
+
+    const voiceId = String(
+      (line.cfg && line.cfg.realtimeVoice) || "ara"
+    ).toLowerCase();
+
+    const grokVoice =
+      voiceId === "cedar" || voiceId === "male" ? "sal" : "ara";
+
     const ctrl = new AbortController();
+
     const kill = setTimeout(() => ctrl.abort(), 15000);
+
     let tok;
+
     try {
       const r = await fetch("/api/grok-secret", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice: grokVoice }),
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          voice: grokVoice
+        }),
         signal: ctrl.signal,
       });
+
       tok = await r.json();
     } catch (_) {
       tok = null;
     }
+
     clearTimeout(kill);
+
     if (!tok || !tok.ok || !tok.token) return false;
 
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false
+      },
       video: false,
     });
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    const ctx = new Ctx({ sampleRate: RATE });
-    if (ctx.state === "suspended") await ctx.resume();
-    const src = ctx.createMediaStreamSource(stream);
-    const proc = ctx.createScriptProcessor(8192, 1, 1);
-    const mute = ctx.createGain();
+
+    const Ctx =
+      window.AudioContext || window.webkitAudioContext;
+
+    const ctx = new Ctx({
+      sampleRate: RATE
+    });
+
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    const src =
+      ctx.createMediaStreamSource(stream);
+
+    const proc =
+      ctx.createScriptProcessor(8192, 1, 1);
+
+    const mute =
+      ctx.createGain();
+
     mute.gain.value = 0;
+
     src.connect(proc);
     proc.connect(mute);
     mute.connect(ctx.destination);
 
-    const ws = new WebSocket("wss://api.x.ai/v1/realtime?model=grok-voice-latest", [
-      "xai-client-secret." + tok.token,
-    ]);
+    const ws = new WebSocket(
+      "wss://api.x.ai/v1/realtime?model=grok-voice-latest",
+      [
+        "xai-client-secret." + tok.token
+      ]
+    );
 
     let closed = false;
     let playing = 0;
     let assistant = "";
+
     const send = (msg) => {
-      if (ws.readyState === 1) ws.send(JSON.stringify(msg));
+      if (ws.readyState === 1) {
+        ws.send(JSON.stringify(msg));
+      }
     };
+
     const playPcm = (i16) => {
       if (!i16.length) return;
-      const buf = ctx.createBuffer(1, i16.length, RATE);
-      const ch = buf.getChannelData(0);
-      for (let i = 0; i < i16.length; i++) ch[i] = i16[i] / 32768;
-      const node = ctx.createBufferSource();
+
+      const buf =
+        ctx.createBuffer(
+          1,
+          i16.length,
+          RATE
+        );
+
+      const ch =
+        buf.getChannelData(0);
+
+      for (let i = 0; i < i16.length; i++) {
+        ch[i] = i16[i] / 32768;
+      }
+
+      const node =
+        ctx.createBufferSource();
+
       node.buffer = buf;
       node.connect(ctx.destination);
-      const start = Math.max(ctx.currentTime, playing);
+
+      const start =
+        Math.max(
+          ctx.currentTime,
+          playing
+        );
+
       node.start(start);
-      playing = start + buf.duration;
+
+      playing =
+        start + buf.duration;
     };
+
     proc.onaudioprocess = (ev) => {
-      if (closed || ws.readyState !== 1) return;
-      if (playing > ctx.currentTime) return;
-      const f32 = resample(ev.inputBuffer.getChannelData(0), ctx.sampleRate, RATE);
-      const i16 = f32ToI16(f32);
-      send({ type: "input_audio_buffer.append", audio: u8ToB64(new Uint8Array(i16.buffer)) });
+      if (
+        closed ||
+        ws.readyState !== 1
+      ) {
+        return;
+      }
+
+      if (playing > ctx.currentTime) {
+        return;
+      }
+
+      const f32 =
+        resample(
+          ev.inputBuffer.getChannelData(0),
+          ctx.sampleRate,
+          RATE
+        );
+
+      const i16 =
+        f32ToI16(f32);
+
+      send({
+        type: "input_audio_buffer.append",
+        audio: u8ToB64(
+          new Uint8Array(i16.buffer)
+        )
+      });
     };
+
     stop = () => {
       if (closed) return;
+
       closed = true;
+
       try {
         ws.close();
       } catch (_) {}
-      stream.getTracks().forEach((tr) => tr.stop());
+
+      stream
+        .getTracks()
+        .forEach((tr) => tr.stop());
+
       try {
         proc.disconnect();
         src.disconnect();
@@ -136,21 +243,36 @@
     };
 
     try {
-      await new Promise((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error("timeout")), 20000);
-        ws.onopen = () => {
-          clearTimeout(t);
-          resolve();
-        };
-        ws.onerror = () => {
-          clearTimeout(t);
-          reject(new Error("ws"));
-        };
-      });
+      await new Promise(
+        (resolve, reject) => {
+
+          const t =
+            setTimeout(
+              () =>
+                reject(
+                  new Error("timeout")
+                ),
+              20000
+            );
+
+          ws.onopen = () => {
+            clearTimeout(t);
+            resolve();
+          };
+
+          ws.onerror = () => {
+            clearTimeout(t);
+            reject(
+              new Error("ws")
+            );
+          };
+        }
+      );
     } catch (_) {
       stop();
       return false;
     }
+
     if (line.closed) {
       stop();
       return false;
@@ -160,60 +282,189 @@
       type: "session.update",
       session: {
         voice: grokVoice,
+
         instructions: PROMPT,
+
         audio: {
-          input: { format: { type: "audio/pcm", rate: RATE } },
-          output: { format: { type: "audio/pcm", rate: RATE } },
+          input: {
+            format: {
+              type: "audio/pcm",
+              rate: RATE
+            }
+          },
+
+          output: {
+            format: {
+              type: "audio/pcm",
+              rate: RATE
+            }
+          }
         },
-        turn_detection: { type: "server_vad", threshold: 0.85, silence_duration_ms: 1200, prefix_padding_ms: 200 },
+
+        turn_detection: {
+          type: "server_vad",
+          threshold: 0.85,
+          silence_duration_ms: 1200,
+          prefix_padding_ms: 200
+        },
       },
     });
+
     send({
       type: "response.create",
+
       response: {
         instructions:
-          "Greet once, softly: hello… Then stop and listen. Do not shout. Do not repeat. Do not read instructions.",
+          "Greet once with a light, warm, feminine hello… then give the caller space to speak."
       },
     });
 
     line.ready = true;
-    line.hooks.onphase("listening");
+
+    line.hooks.onphase(
+      "listening"
+    );
+
     ws.onmessage = (ev) => {
       let msg;
+
       try {
-        msg = JSON.parse(String(ev.data));
+        msg =
+          JSON.parse(
+            String(ev.data)
+          );
       } catch (_) {
         return;
       }
-      const type = String(msg.type || "");
-      if (type === "input_audio_buffer.speech_started") {
-        if (playing > ctx.currentTime) return;
-        line.hooks.onphase("listening");
-      } else if (type === "input_audio_buffer.speech_stopped") line.hooks.onphase("thinking");
-      else if (type === "response.output_audio.delta" || type === "response.audio.delta") {
-        line.hooks.onphase("speaking");
+
+      const type =
+        String(msg.type || "");
+
+      if (
+        type ===
+        "input_audio_buffer.speech_started"
+      ) {
+
+        if (
+          playing >
+          ctx.currentTime
+        ) {
+          return;
+        }
+
+        line.hooks.onphase(
+          "listening"
+        );
+
+      } else if (
+        type ===
+        "input_audio_buffer.speech_stopped"
+      ) {
+
+        line.hooks.onphase(
+          "thinking"
+        );
+
+      } else if (
+        type ===
+          "response.output_audio.delta" ||
+        type ===
+          "response.audio.delta"
+      ) {
+
+        line.hooks.onphase(
+          "speaking"
+        );
+
         try {
-          playPcm(b64ToI16(String(msg.delta || "")));
+          playPcm(
+            b64ToI16(
+              String(
+                msg.delta || ""
+              )
+            )
+          );
         } catch (_) {}
-      } else if (type === "response.output_audio.done" || type === "response.audio.done" || type === "response.done") {
+
+      } else if (
+        type ===
+          "response.output_audio.done" ||
+        type ===
+          "response.audio.done" ||
+        type ===
+          "response.done"
+      ) {
+
         if (assistant.trim()) {
-          line.hooks.onassistant(assistant.trim(), true);
+          line.hooks.onassistant(
+            assistant.trim(),
+            true
+          );
+
           assistant = "";
         }
-        line.hooks.onphase("listening");
-      } else if (type === "conversation.item.input_audio_transcription.completed") {
-        const text = String(msg.transcript || "").trim();
-        if (text) line.hooks.onuser(text);
-      } else if (type.indexOf("audio_transcript.delta") >= 0) assistant += String(msg.delta || "");
-      else if (type.indexOf("audio_transcript.done") >= 0) {
-        const text = String(msg.transcript || assistant).trim();
+
+        line.hooks.onphase(
+          "listening"
+        );
+
+      } else if (
+        type ===
+        "conversation.item.input_audio_transcription.completed"
+      ) {
+
+        const text =
+          String(
+            msg.transcript || ""
+          ).trim();
+
+        if (text) {
+          line.hooks.onuser(text);
+        }
+
+      } else if (
+        type.indexOf(
+          "audio_transcript.delta"
+        ) >= 0
+      ) {
+
+        assistant +=
+          String(msg.delta || "");
+
+      } else if (
+        type.indexOf(
+          "audio_transcript.done"
+        ) >= 0
+      ) {
+
+        const text =
+          String(
+            msg.transcript ||
+            assistant
+          ).trim();
+
         assistant = "";
-        if (text) line.hooks.onassistant(text, true);
+
+        if (text) {
+          line.hooks.onassistant(
+            text,
+            true
+          );
+        }
       }
     };
+
     ws.onclose = () => {
-      if (!closed && !line.closed) line.hooks.onerror("Can't connect — End & retry");
+      if (
+        !closed &&
+        !line.closed
+      ) {
+        line.hooks.onerror(
+          "Can't connect — End & retry"
+        );
+      }
     };
+
     return true;
   };
 })();
