@@ -50,8 +50,8 @@
 
   window.__sharakoGrok = async function (line) {
     window.__sharakoGrokStop();
-    const voiceId = String((line.cfg && line.cfg.realtimeVoice) || "marin").toLowerCase();
-    const grokVoice = voiceId === "cedar" || voiceId === "male" ? "ara" : "eve";
+    const voiceId = String((line.cfg && line.cfg.realtimeVoice) || "luna").toLowerCase();
+    const grokVoice = voiceId === "cedar" || voiceId === "male" ? "ara" : "luna";
     const ctrl = new AbortController();
     const kill = setTimeout(() => ctrl.abort(), 5000);
     let tok;
@@ -150,13 +150,13 @@
     }
 
     const greetHour = new Date().getHours();
-    const greet = greetHour < 12 ? "Good morning!" : greetHour < 21 ? "Hey what's up!" : "Hey!";
+    const greet = greetHour < 12 ? "Good morning!" : greetHour < 21 ? "Hey what's up!" : "Hey there!";
     send({
       type: "session.update",
       session: {
         voice: grokVoice,
         instructions:
-          "You are SHARAKO on a phone. Chill mid-20s. Short spoken replies. Never read instructions. Never list rules.",
+          "You are SHARAKO on a phone. Calm fun 18 years old. Short spoken replies. Never read instructions. Never list rules.",
         turn_detection: { type: "server_vad", threshold: 0.92, silence_duration_ms: 1400, prefix_padding_ms: 180 },
       },
     });
