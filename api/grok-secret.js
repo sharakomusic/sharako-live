@@ -1,4 +1,4 @@
-/* SHARAKO — GROK OPUS + TIMESTAMP JITTER BUFFER */
+/* SHARAKO — GROK EVE + OPUS + TIMESTAMP JITTER BUFFER */
 (function () {
   const OPUS_RATE = 24000;
   const OPUS_FRAME = 480; // 20 ms @ 24 kHz
@@ -69,7 +69,7 @@
   };
 
   const PROMPT =
-    "Calm and sweet.";
+    "Calm, sweet, natural, feminine, relaxed, conversational, warm, brief, and human. Never sound formal, robotic, corporate, or overly enthusiastic. Use natural pauses and soft reactions when appropriate.";
 
   window.__sharakoGrok = async function (line) {
     window.__sharakoGrokStop();
@@ -113,7 +113,12 @@
       return false;
     }
 
-    const grokVoice = "carina";
+    /*
+      EVE:
+      Better target for softer, more natural
+      conversational delivery.
+    */
+    const grokVoice = "eve";
 
     const ctrl =
       new AbortController();
@@ -168,7 +173,14 @@
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
+
+          /*
+            Keep AGC off.
+            Prevent Android/browser gain riding
+            from changing perceived character.
+          */
           autoGainControl: false,
+
           channelCount: 1
         },
 
@@ -196,6 +208,11 @@
       OPUS_RATE
     );
 
+    console.log(
+      "GROK VOICE:",
+      grokVoice
+    );
+
     const src =
       ctx.createMediaStreamSource(
         stream
@@ -217,9 +234,15 @@
     proc.connect(mute);
     mute.connect(ctx.destination);
 
+    /*
+      PIN MODEL VERSION.
+
+      This avoids grok-voice-latest changing
+      underneath SHARAKO later.
+    */
     const ws =
       new WebSocket(
-        "wss://api.x.ai/v1/realtime?model=grok-voice-latest",
+        "wss://api.x.ai/v1/realtime?model=grok-voice-think-fast-2.0",
         [
           "xai-client-secret." +
           tok.token
@@ -233,13 +256,17 @@
       MIC OPUS STATE
     */
     let micTimestamp = 0;
+
     let micQueue =
       new Float32Array(0);
 
     /*
       DECODE INPUT TIMESTAMP
-      This only gives the decoder ordered timestamps.
-      Playback timing comes from decoded AudioData.
+
+      Used only to keep incoming Opus
+      packets ordered for WebCodecs.
+
+      Playback itself uses decoded timing.
     */
     let decoderTimestamp = 0;
 
@@ -253,8 +280,12 @@
     let lastScheduledEnd = 0;
 
     /*
-      Small initial buffer before first playback.
-      60 ms = 3 x 20 ms frames.
+      60 ms initial cushion.
+
+      3 x 20 ms frames.
+
+      Small enough to keep latency low,
+      large enough to smooth arrival jitter.
     */
     const JITTER_START_MS = 60;
 
@@ -318,6 +349,11 @@
 
     /*
       PLAYBACK SCHEDULER
+
+      IMPORTANT:
+      No pitch shifting.
+      No time stretching.
+      No playback speed change.
     */
     function scheduleJitterBuffer() {
       if (
@@ -328,7 +364,8 @@
       }
 
       /*
-        Sort by actual decoded timestamp.
+        Sort by decoded timestamps,
+        NOT packet arrival time.
       */
       jitterQueue.sort(
         (a, b) =>
@@ -337,7 +374,8 @@
       );
 
       /*
-        Hold a tiny initial cushion.
+        Build initial 60 ms cushion
+        before starting playback.
       */
       if (!jitterStarted) {
         let bufferedUs = 0;
@@ -387,8 +425,10 @@
           offsetSeconds;
 
         /*
-          Never schedule into the past.
-          Never overlap an earlier frame.
+          Never schedule in the past.
+
+          Never overlap the previous
+          decoded frame.
         */
         scheduledStart =
           Math.max(
@@ -414,9 +454,23 @@
         node.buffer = buffer;
 
         /*
-          Absolutely no speed manipulation.
+          LOCK NATURAL SPEED.
+
+          Do not modify this trying
+          to make the voice higher.
         */
         node.playbackRate.value = 1.0;
+
+        /*
+          No detune.
+          No pitch shift.
+        */
+        if (
+          typeof node.detune !==
+          "undefined"
+        ) {
+          node.detune.value = 0;
+        }
 
         node.connect(
           ctx.destination
@@ -453,8 +507,12 @@
             );
 
             /*
-              Use ACTUAL decoder timing/rate.
-              No second resample.
+              IMPORTANT:
+
+              Respect decoder's real
+              sample rate and timing.
+
+              NO SECOND RESAMPLE.
             */
             jitterQueue.push({
               timestamp:
@@ -562,7 +620,8 @@
         audioData.close();
 
         /*
-          20 ms in microseconds
+          Exactly 20 ms,
+          expressed in microseconds.
         */
         micTimestamp += 20000;
       }
@@ -578,8 +637,11 @@
       }
 
       /*
-        Don't transmit mic while
-        scheduled output is still playing.
+        Half-duplex protection.
+
+        Do not transmit mic while
+        SHARAKO's scheduled output
+        is still playing.
       */
       if (
         lastScheduledEnd >
@@ -594,10 +656,13 @@
 
       /*
         ONE resample only:
-        device rate -> Opus 24 kHz.
 
-        If Android already gives us 24 kHz,
-        this becomes a straight copy.
+        device AudioContext rate
+        -> 24 kHz Opus rate.
+
+        If Android/WebView already
+        supplies 24 kHz this is
+        simply copied.
       */
       const samples =
         resample(
@@ -644,16 +709,33 @@
 
       try {
         proc.disconnect();
+      } catch (_) {}
+
+      try {
         src.disconnect();
+      } catch (_) {}
+
+      try {
         mute.disconnect();
+      } catch (_) {}
+
+      try {
         ctx.close();
       } catch (_) {}
 
       jitterQueue.length = 0;
+
+      micQueue =
+        new Float32Array(0);
+
+      jitterStarted = false;
+      playbackBaseCtx = null;
+      playbackBaseTs = null;
+      lastScheduledEnd = 0;
     };
 
     /*
-      SAME 20 SECOND SOCKET WINDOW
+      SOCKET CONNECTION WINDOW
     */
     try {
       await new Promise(
@@ -697,6 +779,9 @@
       return false;
     }
 
+    /*
+      GROK SESSION
+    */
     send({
       type: "session.update",
 
@@ -726,19 +811,33 @@
 
         turn_detection: {
           type: "server_vad",
+
+          /*
+            Fairly strong threshold to avoid
+            background noise triggering turns.
+          */
           threshold: 0.85,
+
+          /*
+            Gives you room for human pauses
+            without Grok instantly cutting in.
+          */
           silence_duration_ms: 1200,
+
           prefix_padding_ms: 200
         }
       }
     });
 
+    /*
+      OPENING
+    */
     send({
       type: "response.create",
 
       response: {
         instructions:
-          "Say Hello? once."
+          "Say only 'Hello?' once, softly and naturally. Then stop."
       }
     });
 
@@ -809,7 +908,10 @@
 
               /*
                 Decoder ordering timestamp.
-                Playback does NOT use arrival time.
+
+                Playback timing comes
+                from decoded AudioData,
+                not network arrival.
               */
               timestamp:
                 decoderTimestamp,
@@ -822,11 +924,6 @@
             chunk
           );
 
-          /*
-            Advance nominal decode clock.
-            Actual playback timing comes
-            from decoded AudioData.
-          */
           decoderTimestamp +=
             20000;
 
