@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     res.status(200).json({ ok: false });
     return;
   }
-  let voice = "luna";
+  let voice = "iris";
   try {
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
     if (body.voice === "ara" || body.voice === "leo") voice = "ara";
