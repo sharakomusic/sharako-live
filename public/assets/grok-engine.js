@@ -108,7 +108,7 @@
     };
     proc.onaudioprocess = (ev) => {
       if (closed || ws.readyState !== 1) return;
-      if (playing > ctx.currentTime + 0.08) return;
+      if (playing > ctx.currentTime) return;
       const f32 = resample(ev.inputBuffer.getChannelData(0), ctx.sampleRate, RATE);
       const i16 = f32ToI16(f32);
       send({ type: "input_audio_buffer.append", audio: u8ToB64(new Uint8Array(i16.buffer)) });
