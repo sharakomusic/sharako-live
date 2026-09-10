@@ -1,4 +1,4 @@
-/* Grok voice — APK/WebView. CARINA TEST */
+/* Grok voice — APK/WebView. ALTAIR TEST */
 (function () {
   const RATE = 24000;
   let stop = null;
@@ -6,10 +6,14 @@
   function b64ToI16(b64) {
     const bin = atob(b64);
     const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+    for (let i = 0; i < bin.length; i++) {
+      bytes[i] = bin.charCodeAt(i);
+    }
 
     const aligned = new ArrayBuffer(bytes.byteLength);
     new Uint8Array(aligned).set(bytes);
+
     return new Int16Array(aligned);
   }
 
@@ -37,7 +41,9 @@
       const i1 = Math.min(i0 + 1, input.length - 1);
       const f = x - i0;
 
-      out[i] = input[i0] * (1 - f) + input[i1] * f;
+      out[i] =
+        input[i0] * (1 - f) +
+        input[i1] * f;
     }
 
     return out;
@@ -65,21 +71,21 @@
   };
 
   /*
-    Keep this deliberately simple.
-    We want to hear CARINA'S actual voice first.
+    Minimal personality prompt.
+    Let ALTAIR'S actual voice come through.
   */
   const PROMPT =
-    "You are SHARAKO, 26, talking naturally on a phone call. " +
-    "Warm, casual, witty and conversational. " +
-    "Keep replies short and natural. " +
-    "Use occasional natural hmms, ums and little laughs when they fit. " +
-    "Let the caller lead the conversation.";
+    "You are SHARAKO, 26, talking naturally on a private phone call. " +
+    "Feminine, warm, confident, subtly flirty and intimate. " +
+    "Keep replies short, casual and natural. " +
+    "Use occasional little hmms, ums, amused breaths and small laughs when they naturally fit. " +
+    "Let the caller lead.";
 
   window.__sharakoGrok = async function (line) {
     window.__sharakoGrokStop();
 
-    /* HARD LOCK CARINA */
-    const grokVoice = "carina";
+    /* HARD LOCK ALTAIR */
+    const grokVoice = "altair";
 
     const ctrl = new AbortController();
 
@@ -91,19 +97,22 @@
     let tok;
 
     try {
-      const r = await fetch("/api/grok-secret", {
-        method: "POST",
+      const r = await fetch(
+        "/api/grok-secret",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type": "application/json"
-        },
+          headers: {
+            "Content-Type": "application/json"
+          },
 
-        body: JSON.stringify({
-          voice: grokVoice
-        }),
+          body: JSON.stringify({
+            voice: grokVoice
+          }),
 
-        signal: ctrl.signal,
-      });
+          signal: ctrl.signal,
+        }
+      );
 
       tok = await r.json();
 
@@ -113,7 +122,11 @@
 
     clearTimeout(kill);
 
-    if (!tok || !tok.ok || !tok.token) {
+    if (
+      !tok ||
+      !tok.ok ||
+      !tok.token
+    ) {
       return false;
     }
 
@@ -132,9 +145,10 @@
       window.AudioContext ||
       window.webkitAudioContext;
 
-    const ctx = new Ctx({
-      sampleRate: RATE
-    });
+    const ctx =
+      new Ctx({
+        sampleRate: RATE
+      });
 
     if (ctx.state === "suspended") {
       await ctx.resume();
@@ -144,8 +158,8 @@
       ctx.createMediaStreamSource(stream);
 
     /*
-      Back to 4096.
-      Keeps realtime mic chunks smaller.
+      KEEP 4096 — this is the version
+      that held the good connection.
     */
     const proc =
       ctx.createScriptProcessor(
@@ -177,7 +191,9 @@
 
     const send = (msg) => {
       if (ws.readyState === 1) {
-        ws.send(JSON.stringify(msg));
+        ws.send(
+          JSON.stringify(msg)
+        );
       }
     };
 
@@ -194,15 +210,23 @@
       const ch =
         buf.getChannelData(0);
 
-      for (let i = 0; i < i16.length; i++) {
-        ch[i] = i16[i] / 32768;
+      for (
+        let i = 0;
+        i < i16.length;
+        i++
+      ) {
+        ch[i] =
+          i16[i] / 32768;
       }
 
       const node =
         ctx.createBufferSource();
 
       node.buffer = buf;
-      node.connect(ctx.destination);
+
+      node.connect(
+        ctx.destination
+      );
 
       const start =
         Math.max(
@@ -225,10 +249,13 @@
       }
 
       /*
-        Don't feed speaker audio back into mic
-        while SHARAKO is talking.
+        Don't transmit mic while
+        SHARAKO's queued audio is playing.
       */
-      if (playing > ctx.currentTime) {
+      if (
+        playing >
+        ctx.currentTime
+      ) {
         return;
       }
 
@@ -243,7 +270,8 @@
         f32ToI16(f32);
 
       send({
-        type: "input_audio_buffer.append",
+        type:
+          "input_audio_buffer.append",
 
         audio:
           u8ToB64(
@@ -278,7 +306,7 @@
     };
 
     /*
-      Longer connection window for weak cellular.
+      KEEP 20-second socket allowance.
     */
     try {
       await new Promise(
@@ -300,6 +328,7 @@
 
           ws.onerror = () => {
             clearTimeout(t);
+
             reject(
               new Error("ws")
             );
@@ -309,11 +338,13 @@
 
     } catch (_) {
       stop();
+
       return false;
     }
 
     if (line.closed) {
       stop();
+
       return false;
     }
 
@@ -322,8 +353,8 @@
 
       session: {
 
-        /* CARINA */
-        voice: "carina",
+        /* ALTAIR */
+        voice: "altair",
 
         instructions: PROMPT,
 
@@ -353,8 +384,8 @@
     });
 
     /*
-      One simple greeting.
-      No bright / energetic / soft / slow voice instructions.
+      One plain greeting.
+      No voice-style instructions here.
     */
     send({
       type: "response.create",
