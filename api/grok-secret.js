@@ -1,4 +1,4 @@
-/* Grok voice — APK/WebView. ALTAIR TEST */
+/* Grok voice — APK/WebView. SAGE TEST */
 (function () {
   const RATE = 24000;
   let stop = null;
@@ -71,21 +71,16 @@
   };
 
   /*
-    Minimal personality prompt.
-    Let ALTAIR'S actual voice come through.
+    ONLY TWO TRAITS.
+    Nothing else influencing Sage.
   */
-  const PROMPT =
-    "You are SHARAKO, 26, talking naturally on a private phone call. " +
-    "Feminine, warm, confident, subtly flirty and intimate. " +
-    "Keep replies short, casual and natural. " +
-    "Use occasional little hmms, ums, amused breaths and small laughs when they naturally fit. " +
-    "Let the caller lead.";
+  const PROMPT = "Calm and sweet.";
 
   window.__sharakoGrok = async function (line) {
     window.__sharakoGrokStop();
 
-    /* HARD LOCK ALTAIR */
-    const grokVoice = "altair";
+    /* HARD LOCK SAGE */
+    const grokVoice = "sage";
 
     const ctrl = new AbortController();
 
@@ -97,22 +92,19 @@
     let tok;
 
     try {
-      const r = await fetch(
-        "/api/grok-secret",
-        {
-          method: "POST",
+      const r = await fetch("/api/grok-secret", {
+        method: "POST",
 
-          headers: {
-            "Content-Type": "application/json"
-          },
+        headers: {
+          "Content-Type": "application/json"
+        },
 
-          body: JSON.stringify({
-            voice: grokVoice
-          }),
+        body: JSON.stringify({
+          voice: grokVoice
+        }),
 
-          signal: ctrl.signal,
-        }
-      );
+        signal: ctrl.signal,
+      });
 
       tok = await r.json();
 
@@ -122,11 +114,7 @@
 
     clearTimeout(kill);
 
-    if (
-      !tok ||
-      !tok.ok ||
-      !tok.token
-    ) {
+    if (!tok || !tok.ok || !tok.token) {
       return false;
     }
 
@@ -145,10 +133,9 @@
       window.AudioContext ||
       window.webkitAudioContext;
 
-    const ctx =
-      new Ctx({
-        sampleRate: RATE
-      });
+    const ctx = new Ctx({
+      sampleRate: RATE
+    });
 
     if (ctx.state === "suspended") {
       await ctx.resume();
@@ -158,8 +145,8 @@
       ctx.createMediaStreamSource(stream);
 
     /*
-      KEEP 4096 — this is the version
-      that held the good connection.
+      KEEP 4096.
+      Connection settings unchanged.
     */
     const proc =
       ctx.createScriptProcessor(
@@ -191,9 +178,7 @@
 
     const send = (msg) => {
       if (ws.readyState === 1) {
-        ws.send(
-          JSON.stringify(msg)
-        );
+        ws.send(JSON.stringify(msg));
       }
     };
 
@@ -210,23 +195,15 @@
       const ch =
         buf.getChannelData(0);
 
-      for (
-        let i = 0;
-        i < i16.length;
-        i++
-      ) {
-        ch[i] =
-          i16[i] / 32768;
+      for (let i = 0; i < i16.length; i++) {
+        ch[i] = i16[i] / 32768;
       }
 
       const node =
         ctx.createBufferSource();
 
       node.buffer = buf;
-
-      node.connect(
-        ctx.destination
-      );
+      node.connect(ctx.destination);
 
       const start =
         Math.max(
@@ -249,13 +226,10 @@
       }
 
       /*
-        Don't transmit mic while
-        SHARAKO's queued audio is playing.
+        Don't feed speaker audio back into mic
+        while SHARAKO is talking.
       */
-      if (
-        playing >
-        ctx.currentTime
-      ) {
+      if (playing > ctx.currentTime) {
         return;
       }
 
@@ -270,8 +244,7 @@
         f32ToI16(f32);
 
       send({
-        type:
-          "input_audio_buffer.append",
+        type: "input_audio_buffer.append",
 
         audio:
           u8ToB64(
@@ -306,7 +279,7 @@
     };
 
     /*
-      KEEP 20-second socket allowance.
+      KEEP 20-second connection window.
     */
     try {
       await new Promise(
@@ -338,13 +311,11 @@
 
     } catch (_) {
       stop();
-
       return false;
     }
 
     if (line.closed) {
       stop();
-
       return false;
     }
 
@@ -353,9 +324,10 @@
 
       session: {
 
-        /* ALTAIR */
-        voice: "altair",
+        /* SAGE */
+        voice: "sage",
 
+        /* ONLY: CALM AND SWEET */
         instructions: PROMPT,
 
         audio: {
@@ -384,15 +356,14 @@
     });
 
     /*
-      One plain greeting.
-      No voice-style instructions here.
+      Plain greeting.
+      No style instructions.
     */
     send({
       type: "response.create",
 
       response: {
-        instructions:
-          "Say Hello? once, then listen."
+        instructions: "Say Hello? once."
       },
     });
 
