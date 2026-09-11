@@ -1,15 +1,14 @@
-/* Grok voice — Iris @ 24 kHz. Soft breathy whisper. Stitched playout. */
+/* Grok voice — Iris @ 24 kHz. Smile hello. Normal speed. */
 (function () {
   const GROK_RATE = 24000;
   const VOICE = "iris";
-  const SPEED = 0.72;
+  const SPEED = 1.0;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPT =
     "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-    "Speak in a soft breathy whisper. Super slow. Enchanting, soothing. " +
-    "Gentle teasing warmth and intimate seduction in every word. " +
-    "Quiet, close to the mic, unhurried. Never loud, never rushed, never assistant-speak. " +
-    "Short replies unless they ask for more.";
+    "High feminine Iris voice. Soft, pretty, warm, a little teasing. " +
+    "Speak with a smile, like it's a relief to hear from them. Normal speed. Not a whisper, not husky, not slow, not a biker. " +
+    "Never assistant-speak. Short replies unless they ask for more.";
   const PLAYOUT_LEAD_S = 0.06;
   const PREROLL_SAMPLES = 2880;
   const FLUSH_SAMPLES = 1920;
@@ -145,4 +144,147 @@
       nodes = [];
       endAt = 0;
       pending = [];
-      pendingN
+      pendingN = 0;
+      primed = false;
+    }
+
+    function playSamples(samples) {
+      if (closed || !samples || !samples.length) return;
+      const buf = ctx.createBuffer(1, samples.length, GROK_RATE);
+      buf.getChannelData(0).set(samples);
+      const node = ctx.createBufferSource();
+      node.buffer = buf;
+      node.connect(ctx.destination);
+      const now = ctx.currentTime;
+      const start = endAt > now + 0.01 ? endAt : now + lead;
+      endAt = start + buf.duration;
+      try {
+        node.start(start);
+        nodes.push(node);
+        node.onended = function () {
+          const ix = nodes.indexOf(node);
+          if (ix >= 0) nodes.splice(ix, 1);
+        };
+      } catch (_) {}
+    }
+
+    function flushPending(force) {
+      if (!pendingN) return;
+      if (!force && !primed && pendingN < PREROLL_SAMPLES) return;
+      if (!force && primed && pendingN < FLUSH_SAMPLES) return;
+      const out = new Float32Array(pendingN);
+      let o = 0;
+      for (let i = 0; i < pending.length; i++) {
+        out.set(pending[i], o);
+        o += pending[i].length;
+      }
+      pending = [];
+      pendingN = 0;
+      primed = true;
+      playSamples(out);
+    }
+
+    function queueBytes(bytes) {
+      if (closed || !bytes || bytes.byteLength < 2) return;
+      const samples = pcmToF32(bytes);
+      if (!samples.length) return;
+      pending.push(samples);
+      pendingN += samples.length;
+      flushPending(false);
+    }
+
+    stop = function () {
+      if (closed) return;
+      closed = true;
+      ready = false;
+      stopPlay();
+      try { proc.onaudioprocess = null; } catch (_) {}
+      try { ws.close(); } catch (_) {}
+      try { stream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      try { proc.disconnect(); src.disconnect(); mute.disconnect(); ctx.close(); } catch (_) {}
+    };
+
+    try {
+      await new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error("timeout")), 20000);
+        ws.onopen = function () { clearTimeout(t); resolve(); };
+        ws.onerror = function () { clearTimeout(t); reject(new Error("ws")); };
+      });
+    } catch (_) {
+      stop();
+      return false;
+    }
+    if (line.closed) { stop(); return false; }
+
+    send({
+      type: "session.update",
+      session: {
+        voice: VOICE,
+        instructions: PROMPT,
+        audio: {
+          input: { format: { type: "audio/pcm", rate: GROK_RATE } },
+          output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
+        },
+        turn_detection: { type: "server_vad", threshold: 0.6, silence_duration_ms: 400, prefix_padding_ms: 180 }
+      }
+    });
+
+    line.ready = true;
+    try { line.hooks.onphase("listening"); } catch (_) {}
+
+    proc.onaudioprocess = function (ev) {
+      if (closed || !ready || ws.readyState !== 1) return;
+      if (playing()) return;
+      const samples = downsampleTo24k(ev.inputBuffer.getChannelData(0), deviceRate);
+      send({ type: "input_audio_buffer.append", audio: u8ToB64(f32ToPcm(samples)) });
+    };
+
+    ws.onmessage = function (ev) {
+      let msg;
+      try { msg = JSON.parse(String(ev.data)); } catch (_) { return; }
+      const type = String(msg.type || "");
+
+      if (type === "session.updated" || type === "session.created") {
+        ready = true;
+        send({
+          type: "response.create",
+          response: { instructions: "Say Hello once like a soft sigh of relief — happy it's them, glad they called. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired or husky. Then stop and listen. Do not read instructions." }
+        });
+      } else if (type === "input_audio_buffer.speech_started") {
+        stopPlay();
+        try { line.hooks.onphase("listening"); } catch (_) {}
+      } else if (type === "input_audio_buffer.speech_stopped") {
+        try { line.hooks.onphase("thinking"); } catch (_) {}
+      } else if (type === "response.output_audio.delta" || type === "response.audio.delta") {
+        try { line.hooks.onphase("speaking"); } catch (_) {}
+        try { queueBytes(b64ToU8(String(msg.delta || msg.audio || ""))); } catch (_) {}
+      } else if (type === "response.output_audio.done" || type === "response.audio.done") {
+        flushPending(true);
+      } else if (type === "response.done") {
+        flushPending(true);
+        if (assistant.trim()) {
+          try { line.hooks.onassistant(assistant.trim(), true); } catch (_) {}
+          assistant = "";
+        }
+        try { line.hooks.onphase("listening"); } catch (_) {}
+      } else if (type === "conversation.item.input_audio_transcription.completed") {
+        const text = String(msg.transcript || "").trim();
+        if (text) { try { line.hooks.onuser(text); } catch (_) {} }
+      } else if (type.indexOf("audio_transcript.delta") >= 0) {
+        assistant += String(msg.delta || "");
+      } else if (type.indexOf("audio_transcript.done") >= 0) {
+        const text = String(msg.transcript || assistant).trim();
+        assistant = "";
+        if (text) { try { line.hooks.onassistant(text, true); } catch (_) {} }
+      }
+    };
+
+    ws.onclose = function () {
+      if (!closed && !line.closed) {
+        try { line.hooks.onerror("Can't connect — End & retry"); } catch (_) {}
+      }
+    };
+
+    return true;
+  };
+})();
