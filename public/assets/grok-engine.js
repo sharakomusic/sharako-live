@@ -181,6 +181,12 @@
     var old = document.getElementById("sharako-voice-switch");
     if (old) old.remove();
     localStorage.removeItem("sharako.voice");
+    localStorage.setItem("sharako.wakeWord", "0");
+    var av = window.AndroidVoice;
+    if (av) {
+      if (av.setWakeWord) av.setWakeWord("0");
+      else if (av.stopWakeWord) av.stopWakeWord();
+    }
   } catch (_) {}
 
   const PLAYOUT_LEAD_S = 0.06;
