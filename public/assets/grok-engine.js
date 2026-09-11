@@ -1,14 +1,55 @@
-/* Grok voice — Iris @ 24 kHz. Smile hello. Normal speed. */
+/* Grok voice — Iris + Sal only. 24 kHz. */
 (function () {
   const GROK_RATE = 24000;
-  const VOICE = "iris";
+  const GIRL = "iris";
+  const GUY = "sal";
   const SPEED = 1.0;
   const MODEL = "grok-voice-think-fast-2.0";
-  const PROMPT =
-    "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-    "High feminine Iris voice. Soft, pretty, warm, a little teasing. " +
-    "Speak with a smile, like it's a relief to hear from them. Normal speed. Not a whisper, not husky, not slow, not a biker. " +
-    "Never assistant-speak. Short replies unless they ask for more.";
+  const PROMPTS = {
+    iris:
+      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
+      "High feminine Iris voice. Soft, pretty, warm, a little teasing. " +
+      "Speak with a smile, like it's a relief to hear from them. Normal speed. Not a whisper, not husky, not slow, not a biker. " +
+      "Never assistant-speak. Short replies unless they ask for more.",
+    sal:
+      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
+      "Male Sal voice. Warm, easy, a little teasing. Normal speed. " +
+      "Not a biker, not growly, not a cartoon. Never assistant-speak. " +
+      "Short replies unless they ask for more."
+  };
+  function currentVoice() {
+    try {
+      const v = String(localStorage.getItem("sharako.voice") || GIRL).toLowerCase();
+      return v === GUY ? GUY : GIRL;
+    } catch (_) {
+      return GIRL;
+    }
+  }
+  function mountSwitch() {
+    let box = document.getElementById("sharako-voice-switch");
+    if (box) box.remove();
+    box = document.createElement("div");
+    box.id = "sharako-voice-switch";
+    box.style.cssText = "position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:80;display:flex;gap:8px;";
+    function btn(label, name) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      const on = currentVoice() === name;
+      b.style.cssText = "min-width:88px;height:36px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:" + (on ? "rgba(255,255,255,.22)" : "rgba(0,0,0,.4)") + ";color:#fff;letter-spacing:.16em;font-size:10px;text-transform:uppercase;";
+      b.onclick = function () {
+        try { localStorage.setItem("sharako.voice", name); } catch (_) {}
+        try { window.__sharakoGrokStop && window.__sharakoGrokStop(); } catch (_) {}
+        mountSwitch();
+      };
+      return b;
+    }
+    box.appendChild(btn("Girl", GIRL));
+    box.appendChild(btn("Guy", GUY));
+    document.body.appendChild(box);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountSwitch);
+  else mountSwitch();
   const PLAYOUT_LEAD_S = 0.06;
   const PREROLL_SAMPLES = 2880;
   const FLUSH_SAMPLES = 1920;
@@ -86,7 +127,7 @@
       const r = await fetch("/api/grok-secret", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice: VOICE }),
+        body: JSON.stringify({ voice: currentVoice() }),
         signal: ctrl.signal
       });
       tok = await r.json();
@@ -120,12 +161,14 @@
     proc.connect(mute);
     mute.connect(ctx.destination);
 
-    const ws = new WebSocket("wss://api.x.ai/v1/realtime?model=" + MODEL, [
+    let ws = new WebSocket("wss://api.x.ai/v1/realtime?model=" + MODEL, [
       "xai-client-secret." + tok.token
     ]);
 
     let closed = false;
     let ready = false;
+    let greeted = false;
+    let reconnects = 0;
     let assistant = "";
     let nodes = [];
     let endAt = 0;
@@ -219,8 +262,8 @@
     send({
       type: "session.update",
       session: {
-        voice: VOICE,
-        instructions: PROMPT,
+        voice: currentVoice(),
+        instructions: PROMPTS[currentVoice()],
         audio: {
           input: { format: { type: "audio/pcm", rate: GROK_RATE } },
           output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
@@ -239,17 +282,70 @@
       send({ type: "input_audio_buffer.append", audio: u8ToB64(f32ToPcm(samples)) });
     };
 
-    ws.onmessage = function (ev) {
+    async function reconnect() {
+      if (closed || line.closed) return;
+      if (reconnects >= 3) {
+        try { line.hooks.onerror("Can't connect — End & retry"); } catch (_) {}
+        return;
+      }
+      reconnects += 1;
+      ready = false;
+      try { line.hooks.onphase("thinking"); } catch (_) {}
+      let next = null;
+      try {
+        const r = await fetch("/api/grok-secret", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voice: currentVoice() })
+        });
+        next = await r.json();
+      } catch (_) { next = null; }
+      if (!next || !next.ok || !next.token || closed || line.closed) {
+        try { line.hooks.onerror("Can't connect — End & retry"); } catch (_) {}
+        return;
+      }
+      ws = new WebSocket("wss://api.x.ai/v1/realtime?model=" + MODEL, [
+        "xai-client-secret." + next.token
+      ]);
+      bindSocket(ws);
+    }
+
+    function bindSocket(sock) {
+      sock.onmessage = handleMessage;
+      sock.onopen = function () {
+        send({
+          type: "session.update",
+          session: {
+            voice: currentVoice(),
+            instructions: PROMPTS[currentVoice()],
+            audio: {
+              input: { format: { type: "audio/pcm", rate: GROK_RATE } },
+              output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
+            },
+            turn_detection: { type: "server_vad", threshold: 0.6, silence_duration_ms: 500, prefix_padding_ms: 180 }
+          }
+        });
+      };
+      sock.onclose = function () {
+        if (closed || line.closed) return;
+        reconnect();
+      };
+    }
+
+    function handleMessage(ev) {
       let msg;
       try { msg = JSON.parse(String(ev.data)); } catch (_) { return; }
       const type = String(msg.type || "");
 
       if (type === "session.updated" || type === "session.created") {
         ready = true;
-        send({
-          type: "response.create",
-          response: { instructions: "Say Hello once like a soft sigh of relief — happy it's them, glad they called. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired or husky. Then stop and listen. Do not read instructions." }
-        });
+        if (!greeted) {
+          greeted = true;
+          send({
+            type: "response.create",
+            response: { instructions: "Say Hello once like a soft sigh of relief — happy it's them, glad they called. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired or husky. Then stop and listen. Do not read instructions." }
+          });
+        }
       } else if (type === "input_audio_buffer.speech_started") {
         stopPlay();
         try { line.hooks.onphase("listening"); } catch (_) {}
@@ -277,13 +373,9 @@
         assistant = "";
         if (text) { try { line.hooks.onassistant(text, true); } catch (_) {} }
       }
-    };
+    }
 
-    ws.onclose = function () {
-      if (!closed && !line.closed) {
-        try { line.hooks.onerror("Can't connect — End & retry"); } catch (_) {}
-      }
-    };
+    bindSocket(ws);
 
     return true;
   };
