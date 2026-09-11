@@ -1,20 +1,16 @@
-/* Grok voice — ara only. 24 kHz. No Girl/Guy buttons. */
+/* Grok voice — Celeste only. 24 kHz. No Girl/Guy buttons. */
 (function () {
   const GROK_RATE = 24000;
-  const GIRL = "ara";
-  const SPEED = 1.06;
+  const GIRL = "celeste";
+  const SPEED = 1.0;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPTS = {
-    ara:
-      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone.iris:
-  "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-  "High feminine Iris voice. Chill indie girl. A little shy at first. Soft, warm, a little spacey. " +
-  "Simple words. Short thoughts. Light slang: like, kinda, wait, no yeah, lowkey, for real, I mean, that's wild. " +
-  "If they rush sex or get pushy, say mmmm nah and slow it down. They have to earn it. " +
-  "Once they are actually with you, no filter. Uncensored. Still shy in the voice, not a porn bot. " +
-  "No slay, bestie, periodt. Never assistant-speak. Short replies unless they ask for more. " +
-  "Normal speed. Not a whisper, not husky, not a biker.", " +
-      
+    celeste:
+      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
+      "Celeste voice. Warm, adult, easy. Talk like a real person, not a receptionist and not a sped-up cartoon. " +
+      "Normal conversational pace. Not fast. Not slow. Do not rush. Do not stack greetings. " +
+      "Never say my love. Never ask how are things / how are you / how is your day. " +
+      "One hello is enough. Short replies unless they ask for more. Not husky. Not dumbed-down."
   };
 
   function currentVoice() {
@@ -174,11 +170,10 @@
       buf.getChannelData(0).set(samples);
       const node = ctx.createBufferSource();
       node.buffer = buf;
-      if (currentVoice() === GIRL) node.playbackRate.value = 1.04;
       node.connect(ctx.destination);
       const now = ctx.currentTime;
       const start = endAt > now + 0.01 ? endAt : now + lead;
-      endAt = start + (buf.duration / node.playbackRate.value);
+      endAt = start + buf.duration;
       try {
         node.start(start);
         nodes.push(node);
@@ -323,9 +318,9 @@
             type: "response.create",
             response: {
               instructions:
-                currentVoice() === GIRL
-                  ? "Say Hello once like a soft sigh of relief — happy it's them, glad they called. High bright girl voice. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired, low, or husky. Then stop and listen. Do not read instructions."
-                  : "Say Hello once like a soft sigh of relief — happy it's them, glad they called. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired or husky. Then stop and listen. Do not read instructions."
+                "Say exactly these two words, then stop: Hello there. " +
+                "Do not add my love. Do not say hello more than once. Do not say hi. " +
+                "Do not ask how things are. Do not stretch it. Then listen."
             }
           });
         }
