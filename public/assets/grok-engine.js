@@ -19,8 +19,75 @@
       "Keep the vocal tone light and feminine, with a clear natural pitch and soft warmth. " +
       "Treat silence as normal. Leave room for the user to speak and let them lead the conversation. " +
       "Your overall presence is calm, pensive, easy, intelligent, feminine, grounded, and effortlessly human. " +
-      "You have internet. When they ask about news, facts, weather, or anything current, search the web and answer. Do not say you are offline or that you cannot look things up."
+      "You have internet. When they ask about news, facts, weather, or anything current, search the web and answer. Do not say you are offline or that you cannot look things up. " +
+      "Remember lasting facts about them: name, people, pets, work, likes, plans. " +
+      "If you learn a new lasting fact, keep talking normally, then end that turn with a hidden tag on its own: %%remember%% the fact %% . " +
+      "If they ask you to forget something: %%forget%% that fact %% . " +
+      "Never read those tags out loud. Never say you have a memory file. Just remember."
   };
+
+  function memoryOn() {
+    try { return localStorage.getItem("sharako.memoryOn") !== "0"; } catch (_) { return true; }
+  }
+
+  function loadMemory() {
+    if (!memoryOn()) return "";
+    try { return String(localStorage.getItem("sharako.memory") || "").trim(); } catch (_) { return ""; }
+  }
+
+  function saveMemory(text) {
+    try {
+      if (text) localStorage.setItem("sharako.memory", text);
+      else localStorage.removeItem("sharako.memory");
+    } catch (_) {}
+  }
+
+  function parseTags(text) {
+    const remember = [];
+    const forget = [];
+    let clean = String(text || "");
+    clean = clean.replace(/%%remember\s*([\s\S]*?)%%/gi, function (_, body) {
+      body.split(/[\n,;]+/).forEach(function (line) {
+        line = line.replace(/^\s*[-•*]\s*/, "").trim();
+        if (line) remember.push(line.slice(0, 180));
+      });
+      return "";
+    });
+    clean = clean.replace(/%%forget\s*([\s\S]*?)%%/gi, function (_, body) {
+      body.split(/[\n,;]+/).forEach(function (line) {
+        line = line.replace(/^\s*[-•*]\s*/, "").trim();
+        if (line) forget.push(line.slice(0, 180));
+      });
+      return "";
+    });
+    return { text: clean.replace(/\n{3,}/g, "\n").trim(), remember: remember, forget: forget };
+  }
+
+  function mergeMemory(remember, forget) {
+    let lines = loadMemory().split("\n").map(function (l) {
+      return l.replace(/^\s*[-•*]\s*/, "").trim();
+    }).filter(Boolean);
+    forget.forEach(function (f) {
+      const fl = f.toLowerCase();
+      lines = lines.filter(function (l) {
+        const ll = l.toLowerCase();
+        return ll !== fl && ll.indexOf(fl) < 0 && fl.indexOf(ll) < 0;
+      });
+    });
+    remember.forEach(function (r) {
+      const rl = r.toLowerCase();
+      if (!lines.some(function (l) { return l.toLowerCase() === rl; })) lines.push(r);
+    });
+    if (lines.length > 40) lines = lines.slice(-40);
+    saveMemory(lines.map(function (l) { return "- " + l; }).join("\n"));
+  }
+
+  function buildInstructions() {
+    let out = PROMPTS[currentVoice()];
+    const mem = loadMemory();
+    if (mem) out += " Facts you already know about them:\n" + mem;
+    return out;
+  }
 
   function currentVoice() {
     return GIRL;
@@ -262,7 +329,7 @@
       type: "session.update",
       session: {
         voice: currentVoice(),
-        instructions: PROMPTS[currentVoice()],
+        instructions: buildInstructions(),
         audio: {
           input: { format: { type: "audio/pcm", rate: GROK_RATE } },
           output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
@@ -318,7 +385,7 @@
           type: "session.update",
           session: {
             voice: currentVoice(),
-            instructions: PROMPTS[currentVoice()],
+            instructions: buildInstructions(),
             audio: {
               input: { format: { type: "audio/pcm", rate: GROK_RATE } },
               output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
@@ -354,7 +421,9 @@
       } else if (type === "response.done") {
         flushPending(true);
         if (assistant.trim()) {
-          try { line.hooks.onassistant(assistant.trim(), true); } catch (_) {}
+          const parsed = parseTags(assistant.trim());
+          if (parsed.remember.length || parsed.forget.length) mergeMemory(parsed.remember, parsed.forget);
+          try { line.hooks.onassistant(parsed.text || assistant.trim(), true); } catch (_) {}
           assistant = "";
         }
         try { line.hooks.onphase("listening"); } catch (_) {}
@@ -366,7 +435,11 @@
       } else if (type.indexOf("audio_transcript.done") >= 0) {
         const text = String(msg.transcript || assistant).trim();
         assistant = "";
-        if (text) { try { line.hooks.onassistant(text, true); } catch (_) {} }
+        if (text) {
+          const parsed = parseTags(text);
+          if (parsed.remember.length || parsed.forget.length) mergeMemory(parsed.remember, parsed.forget);
+          try { line.hooks.onassistant(parsed.text || text, true); } catch (_) {}
+        }
       }
     }
 
