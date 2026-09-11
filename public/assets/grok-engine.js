@@ -2,7 +2,7 @@
 (function () {
   const GROK_RATE = 24000;
   const GIRL = "carina";
-  const SPEED = 1.00;
+  const SPEED = 1.04;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPTS = {
     carina:
