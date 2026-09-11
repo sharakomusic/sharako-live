@@ -19,7 +19,8 @@
       "Keep the vocal tone light and feminine, with a clear natural pitch and soft warmth. " +
       "Treat silence as normal. Leave room for the user to speak and let them lead the conversation. " +
       "Your overall presence is calm, pensive, easy, intelligent, feminine, grounded, and effortlessly human. " +
-      "Say hello at most once. If you already greeted, do not greet again. Do not repeat hello."
+      "Say hello at most once. If you already greeted, do not greet again. Do not repeat hello. " +
+      "You have internet. When they ask about news, facts, weather, or anything current, search the web and answer. Do not say you are offline or that you cannot look things up."
   };
 
   const HELLOS = [
@@ -279,7 +280,8 @@
           input: { format: { type: "audio/pcm", rate: GROK_RATE } },
           output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
         },
-        turn_detection: { type: "server_vad", threshold: 0.6, silence_duration_ms: 400, prefix_padding_ms: 180 }
+        turn_detection: { type: "server_vad", threshold: 0.6, silence_duration_ms: 400, prefix_padding_ms: 180 },
+        tools: [{ type: "web_search" }, { type: "x_search" }]
       }
     });
 
@@ -334,7 +336,8 @@
               input: { format: { type: "audio/pcm", rate: GROK_RATE } },
               output: { format: { type: "audio/pcm", rate: GROK_RATE }, speed: SPEED }
             },
-            turn_detection: { type: "server_vad", threshold: 0.6, silence_duration_ms: 500, prefix_padding_ms: 180 }
+            turn_detection: { type: "server_vad", threshold: 0.6, silence_duration_ms: 500, prefix_padding_ms: 180 },
+            tools: [{ type: "web_search" }, { type: "x_search" }]
           }
         });
       };
