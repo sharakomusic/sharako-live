@@ -405,7 +405,7 @@
 
     try {
       await new Promise((resolve, reject) => {
-        const t = setTimeout(() => reject(new Error("timeout")), 20000);
+        const t = setTimeout(() => reject(new Error("timeout")), 30000);
         ws.onopen = function () { clearTimeout(t); resolve(); };
         ws.onerror = function () { clearTimeout(t); reject(new Error("ws")); };
       });
@@ -414,6 +414,8 @@
       return false;
     }
     if (line.closed) { stop(); return false; }
+    line.ready = true;
+    try { line.hooks.onphase("listening"); } catch (_) {}
 
     send({
       type: "session.update",
@@ -428,9 +430,6 @@
         tools: [{ type: "web_search" }, { type: "x_search" }]
       }
     });
-
-    line.ready = true;
-    try { line.hooks.onphase("listening"); } catch (_) {}
 
     proc.onaudioprocess = function (ev) {
       if (closed || !ready || ws.readyState !== 1) return;
