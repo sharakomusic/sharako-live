@@ -16,16 +16,12 @@ export default async function handler(req, res) {
     return;
   }
 
-  let voice = "luna";
+  let voice = "iris";
   try {
     const body =
       typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
     const v = String(body.voice || "").toLowerCase();
-    if (
-      ["luna", "carina", "iris", "celeste", "ara", "eve", "liora", "aurora", "ursa"].includes(v)
-    ) {
-      voice = v;
-    }
+    if (v === "iris" || v === "sal") voice = v;
   } catch (_) {}
 
   try {
@@ -36,7 +32,7 @@ export default async function handler(req, res) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        expires_after: { seconds: 300 },
+        expires_after: { seconds: 3600 },
         session: {
           model: "grok-voice-think-fast-2.0",
           voice,
