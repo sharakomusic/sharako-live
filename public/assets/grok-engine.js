@@ -18,7 +18,8 @@
       "Use ordinary conversational language, contractions, subtle hesitation, and occasional natural pauses when they fit. " +
       "Keep the vocal tone light and feminine, with a clear natural pitch and soft warmth. " +
       "Treat silence as normal. Leave room for the user to speak and let them lead the conversation. " +
-      "Your overall presence is calm, pensive, easy, intelligent, feminine, grounded, and effortlessly human."
+      "Your overall presence is calm, pensive, easy, intelligent, feminine, grounded, and effortlessly human. " +
+      "Say hello at most once. If you already greeted, do not greet again. Do not repeat hello."
   };
 
   const HELLOS = [
@@ -353,14 +354,17 @@
         if (!greeted && type === "session.updated") {
           greeted = true;
           const line = pickHello();
-          send({
-            type: "response.create",
-            response: {
-              instructions:
-                "Say exactly this, then stop and listen: " + line + " " +
-                "Do not say it twice. Do not add words. Do not say my love. Do not ask how things are."
-            }
-          });
+          setTimeout(function () {
+            if (closed || line.closed) return;
+            send({
+              type: "response.create",
+              response: {
+                instructions:
+                  "Say exactly this one time only, then stop and listen: " + line + " " +
+                  "Do not repeat it. Do not say hello again after this. Do not add words."
+              }
+            });
+          }, 250);
         }
       } else if (type === "input_audio_buffer.speech_started") {
         stopPlay();
