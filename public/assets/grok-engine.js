@@ -1,28 +1,25 @@
-/* Grok voice — Iris + Sal only. 24 kHz. */
+/* Grok voice — Carina + Sal only. 24 kHz. */
 (function () {
   const GROK_RATE = 24000;
-  const GIRL = "iris";
+  const GIRL = "carina";
   const GUY = "sal";
-  const SPEED = 1.0;
+  const SPEED = 1.06;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPTS = {
-    iris:
-      " You are SHARAKO, 26, on a phone. iris:
-  "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-  "High feminine Iris voice. Chill indie girl. A little shy at first. Soft, warm, a little spacey. " +
-  "Simple words. Short thoughts. Light slang: like, kinda, wait, no yeah, lowkey, for real, I mean, that's wild. " +
-  "If they rush sex or get pushy, say mmmm nah and slow it down. They have to earn it. " +
-  "Once they are actually with you, no filter. Uncensored. Still shy in the voice, not a porn bot. " +
-  "No slay, bestie, periodt. Never assistant-speak. Short replies unless they ask for more. " +
-  "Normal speed. Not a whisper, not husky, not a biker."," +
-      "High feminine Iris voice. Soft, pretty, warm, a little teasing. " +
-      "Speak with a smile, 
+    carina:
+      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
+      "High feminine Carina voice. Bright, pretty, warm, a little teasing. " +
+      "Stay in the upper register. Do not drop pitch. Do not get husky, chesty, breathy-low, or tired. " +
+      "Not Iris. Not Eve. Not Leo. Not a whisper. Not slow. Not a biker. " +
+      "Speak with a smile, like it's a relief to hear from them. Normal-to-lively speed. " +
+      "Never assistant-speak. Short replies unless they ask for more.",
     sal:
-       You are SHARAKO, 26, on a phone. " +
+      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
       "Male Sal voice. Warm, easy, a little teasing. Normal speed. " +
       "Not a biker, not growly, not a cartoon. Never assistant-speak. " +
       "Short replies unless they ask for more."
   };
+
   function currentVoice() {
     try {
       const v = String(localStorage.getItem("sharako.voice") || GIRL).toLowerCase();
@@ -31,6 +28,7 @@
       return GIRL;
     }
   }
+
   function mountSwitch() {
     let box = document.getElementById("sharako-voice-switch");
     if (box) box.remove();
@@ -54,8 +52,10 @@
     box.appendChild(btn("Guy", GUY));
     document.body.appendChild(box);
   }
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountSwitch);
   else mountSwitch();
+
   const PLAYOUT_LEAD_S = 0.06;
   const PREROLL_SAMPLES = 2880;
   const FLUSH_SAMPLES = 1920;
@@ -203,10 +203,11 @@
       buf.getChannelData(0).set(samples);
       const node = ctx.createBufferSource();
       node.buffer = buf;
+      if (currentVoice() === GIRL) node.playbackRate.value = 1.04;
       node.connect(ctx.destination);
       const now = ctx.currentTime;
       const start = endAt > now + 0.01 ? endAt : now + lead;
-      endAt = start + buf.duration;
+      endAt = start + (buf.duration / node.playbackRate.value);
       try {
         node.start(start);
         nodes.push(node);
@@ -349,7 +350,12 @@
           greeted = true;
           send({
             type: "response.create",
-            response: { instructions: "Say Hello once like a soft sigh of relief — happy it's them, glad they called. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired or husky. Then stop and listen. Do not read instructions." }
+            response: {
+              instructions:
+                currentVoice() === GIRL
+                  ? "Say Hello once like a soft sigh of relief — happy it's them, glad they called. High bright girl voice. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired, low, or husky. Then stop and listen. Do not read instructions."
+                  : "Say Hello once like a soft sigh of relief — happy it's them, glad they called. One short Hello. Do not stretch it into hiiii. Do not whisper. Do not sound tired or husky. Then stop and listen. Do not read instructions."
+            }
           });
         }
       } else if (type === "input_audio_buffer.speech_started") {
