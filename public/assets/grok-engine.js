@@ -23,6 +23,7 @@
       "Remember lasting facts about them: name, people, pets, work, likes, plans. " +
       "If you learn a new lasting fact, keep talking normally, then end that turn with a hidden tag on its own: %%remember%% the fact %% . " +
       "If they ask you to forget something: %%forget%% that fact %% . " +
+      "If they ask you to call them or remind them at a time, confirm it, then end that turn with a hidden tag: %%callme 7:00 daily%% or %%callme 19:30 once leave%%. Use 24-hour time. daily means every day. once means one time. Never read the tag out loud. " +
       "Never read those tags out loud. Never say you have a memory file. Just remember."
   };
 
@@ -60,6 +61,10 @@
       });
       return "";
     });
+    clean = clean.replace(/%%callme\s*([\s\S]*?)%%/gi, function (_, body) {
+      applyCallMeTag(body);
+      return "";
+    });
     return { text: clean.replace(/\n{3,}/g, "\n").trim(), remember: remember, forget: forget };
   }
 
@@ -87,6 +92,85 @@
     const mem = loadMemory();
     if (mem) out += " Facts you already know about them:\n" + mem;
     return out;
+  }
+
+  function androidVoice() {
+    try { return window.AndroidVoice || null; } catch (_) { return null; }
+  }
+
+  function setDailyCall(hour, minute, message) {
+    const o = {
+      on: true,
+      hour: Math.max(0, Math.min(23, hour | 0)),
+      minute: Math.max(0, Math.min(59, minute | 0)),
+      message: String(message || "").trim().slice(0, 120)
+    };
+    try { localStorage.setItem("sharako.callAlarm", JSON.stringify(o)); } catch (_) {}
+    try {
+      const a = androidVoice();
+      if (a && a.setCallMeMessage) a.setCallMeMessage(o.message);
+      if (a && typeof a.setCallMe === "function") a.setCallMe("1", o.hour, o.minute);
+      else if (a && a.setMorningCall) a.setMorningCall("1", o.hour, o.minute);
+    } catch (_) {}
+    return o;
+  }
+
+  function setOnceCall(hour, minute, message) {
+    const now = new Date();
+    const when = new Date(now);
+    when.setSeconds(0, 0);
+    when.setHours(hour | 0, minute | 0, 0, 0);
+    if (when.getTime() <= now.getTime() + 5000) when.setDate(when.getDate() + 1);
+    const label = String(message || "Call me").trim().slice(0, 80);
+    try { localStorage.setItem("sharako.callAlarm.oneshot", JSON.stringify({ at: when.getTime(), label: label })); } catch (_) {}
+    try {
+      const a = androidVoice();
+      if (a && a.setReminder) a.setReminder(String(when.getTime()), label);
+    } catch (_) {}
+    return when;
+  }
+
+  function parseClock(raw) {
+    const s = String(raw || "").trim().toLowerCase();
+    if (s === "noon" || s === "midday") return { hour: 12, minute: 0 };
+    if (s === "midnight") return { hour: 0, minute: 0 };
+    let m = s.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i);
+    if (!m) return null;
+    let hour = parseInt(m[1], 10);
+    const minute = m[2] ? parseInt(m[2], 10) : 0;
+    const ap = (m[3] || "").toLowerCase();
+    if (ap === "pm" && hour < 12) hour += 12;
+    if (ap === "am" && hour === 12) hour = 0;
+    if (hour > 23 || minute > 59) return null;
+    return { hour: hour, minute: minute };
+  }
+
+  function applyCallMeTag(body) {
+    const text = String(body || "").replace(/\s+/g, " ").trim();
+    if (!text) return;
+    const daily = /\bdaily\b|\bevery day\b|\beach day\b/.test(text);
+    const once = /\bonce\b|\btomorrow\b|\btoday\b/.test(text) || !daily;
+    const clock = text.match(/(\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm)|noon|midnight|\d{1,2})/i);
+    const t = clock ? parseClock(clock[1].replace(/\s+/g, "")) : null;
+    if (!t) return;
+    const msg = text.replace(/daily|once|tomorrow|today|every day|each day/gi, " ")
+      .replace(/\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm)|noon|midnight|\b\d{1,2}\b/gi, " ")
+      .replace(/\s+/g, " ").trim();
+    if (daily && !/\btomorrow\b|\bonce\b/.test(text)) setDailyCall(t.hour, t.minute, msg);
+    else setOnceCall(t.hour, t.minute, msg);
+  }
+
+  function applyCallMeFromSpeech(text) {
+    const s = String(text || "");
+    if (!/\b(call me|remind me|wake me|ring me)\b/i.test(s)) return;
+    const clock = s.match(/\b(noon|midnight|midday|\d{1,2}:\d{2}\s*(?:a\.?m\.?|p\.?m\.?)?|\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?))\b/i);
+    if (!clock) return;
+    const t = parseClock(clock[1].replace(/\./g, "").replace(/\s+/g, ""));
+    if (!t) return;
+    const daily = /\bevery day\b|\beach day\b|\bdaily\b|\bevery morning\b/.test(s);
+    const msg = s.replace(/.*\b(?:to|that)\b/i, "").slice(0, 80).trim();
+    if (daily) setDailyCall(t.hour, t.minute, msg);
+    else setOnceCall(t.hour, t.minute, msg);
   }
 
   function currentVoice() {
@@ -429,7 +513,10 @@
         try { line.hooks.onphase("listening"); } catch (_) {}
       } else if (type === "conversation.item.input_audio_transcription.completed") {
         const text = String(msg.transcript || "").trim();
-        if (text) { try { line.hooks.onuser(text); } catch (_) {} }
+        if (text) {
+          applyCallMeFromSpeech(text);
+          try { line.hooks.onuser(text); } catch (_) {}
+        }
       } else if (type.indexOf("audio_transcript.delta") >= 0) {
         assistant += String(msg.delta || "");
       } else if (type.indexOf("audio_transcript.done") >= 0) {
