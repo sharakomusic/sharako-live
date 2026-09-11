@@ -1,11 +1,11 @@
 /* Grok voice — Carina only. 24 kHz. No Girl/Guy buttons. */
 (function () {
   const GROK_RATE = 24000;
-  const GIRL = "carina";
-  const SPEED = 1.04;
+  const GIRL = "ara";
+  const SPEED = 1.00;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPTS = {
-    carina:
+    ara:
       "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone.iris:
   "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
   "High feminine Iris voice. Chill indie girl. A little shy at first. Soft, warm, a little spacey. " +
