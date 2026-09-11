@@ -16,13 +16,7 @@ export default async function handler(req, res) {
     return;
   }
 
-  let voice = "iris";
-  try {
-    const body =
-      typeof req.body === "string" ? JSON.parse(req.body || "{}") : req.body || {};
-    const v = String(body.voice || "").toLowerCase();
-    if (v === "iris" || v === "sal") voice = v;
-  } catch (_) {}
+  const voice = "ara";
 
   try {
     const r = await fetch("https://api.x.ai/v1/realtime/client_secrets", {
@@ -38,7 +32,7 @@ export default async function handler(req, res) {
           voice,
           audio: {
             input: { format: { type: "audio/pcm", rate: 24000 } },
-            output: { format: { type: "audio/pcm", rate: 24000 }, speed: 1.0 }
+            output: { format: { type: "audio/pcm", rate: 24000 }, speed: 0.9 }
           }
         }
       })
