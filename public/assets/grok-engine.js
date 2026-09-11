@@ -113,20 +113,34 @@
   window.__sharakoGrok = async function (line) {
     window.__sharakoGrokStop();
 
-    const ctrl = new AbortController();
-    const kill = setTimeout(() => ctrl.abort(), 15000);
-    let tok = null;
-    try {
-      const r = await fetch("/api/grok-secret", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ voice: currentVoice() }),
-        signal: ctrl.signal
-      });
-      tok = await r.json();
-    } catch (_) { tok = null; }
-    clearTimeout(kill);
-    if (!tok || !tok.ok || !tok.token) return false;
+    async function getToken() {
+      const ctrl = new AbortController();
+      const kill = setTimeout(() => ctrl.abort(), 25000);
+      try {
+        const r = await fetch("/api/grok-secret", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ voice: currentVoice() }),
+          signal: ctrl.signal
+        });
+        const tok = await r.json();
+        clearTimeout(kill);
+        if (tok && tok.ok && tok.token) return tok;
+      } catch (_) {
+        clearTimeout(kill);
+      }
+      return null;
+    }
+
+    let tok = await getToken();
+    if (!tok) {
+      await new Promise((ok) => setTimeout(ok, 500));
+      tok = await getToken();
+    }
+    if (!tok) {
+      try { line.hooks.onerror("Can't connect — End & retry"); } catch (_) {}
+      return false;
+    }
 
     let stream;
     try {
@@ -134,7 +148,10 @@
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: false, channelCount: 1 },
         video: false
       });
-    } catch (_) { return false; }
+    } catch (_) {
+      try { line.hooks.onerror("Mic blocked — allow microphone and retry"); } catch (_) {}
+      return false;
+    }
 
     const Ctx = window.AudioContext || window.webkitAudioContext;
     const ctx = new Ctx();
@@ -277,13 +294,14 @@
 
     async function reconnect() {
       if (closed || line.closed) return;
-      if (reconnects >= 3) {
+      if (reconnects >= 6) {
         try { line.hooks.onerror("Can't connect — End & retry"); } catch (_) {}
         return;
       }
       reconnects += 1;
       ready = false;
       try { line.hooks.onphase("thinking"); } catch (_) {}
+      await new Promise((ok) => setTimeout(ok, 400));
       let next = null;
       try {
         const r = await fetch("/api/grok-secret", {
