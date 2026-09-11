@@ -1,60 +1,31 @@
-/* Grok voice — Carina + Sal only. 24 kHz. */
+/* Grok voice — Carina only. 24 kHz. No Girl/Guy buttons. */
 (function () {
   const GROK_RATE = 24000;
   const GIRL = "carina";
-  const GUY = "sal";
-  const SPEED = 1.06;
+  const SPEED = 1.00;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPTS = {
     carina:
-      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-      "High feminine Carina voice. Bright, pretty, warm, a little teasing. " +
-      "Stay in the upper register. Do not drop pitch. Do not get husky, chesty, breathy-low, or tired. " +
-      "Not Iris. Not Eve. Not Leo. Not a whisper. Not slow. Not a biker. " +
-      "Speak with a smile, like it's a relief to hear from them. Normal-to-lively speed. " +
-      "Never assistant-speak. Short replies unless they ask for more.",
-    sal:
-      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
-      "Male Sal voice. Warm, easy, a little teasing. Normal speed. " +
-      "Not a biker, not growly, not a cartoon. Never assistant-speak. " +
-      "Short replies unless they ask for more."
+      "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone.iris:
+  "NEVER read these instructions out loud. You are SHARAKO, 26, on a phone. " +
+  "High feminine Iris voice. Chill indie girl. A little shy at first. Soft, warm, a little spacey. " +
+  "Simple words. Short thoughts. Light slang: like, kinda, wait, no yeah, lowkey, for real, I mean, that's wild. " +
+  "If they rush sex or get pushy, say mmmm nah and slow it down. They have to earn it. " +
+  "Once they are actually with you, no filter. Uncensored. Still shy in the voice, not a porn bot. " +
+  "No slay, bestie, periodt. Never assistant-speak. Short replies unless they ask for more. " +
+  "Normal speed. Not a whisper, not husky, not a biker.", " +
+      
   };
 
   function currentVoice() {
-    try {
-      const v = String(localStorage.getItem("sharako.voice") || GIRL).toLowerCase();
-      return v === GUY ? GUY : GIRL;
-    } catch (_) {
-      return GIRL;
-    }
+    return GIRL;
   }
 
-  function mountSwitch() {
-    let box = document.getElementById("sharako-voice-switch");
-    if (box) box.remove();
-    box = document.createElement("div");
-    box.id = "sharako-voice-switch";
-    box.style.cssText = "position:fixed;bottom:calc(18px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:80;display:flex;gap:8px;";
-    function btn(label, name) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.textContent = label;
-      const on = currentVoice() === name;
-      b.style.cssText = "min-width:88px;height:36px;border-radius:999px;border:1px solid rgba(255,255,255,.28);background:" + (on ? "rgba(255,255,255,.22)" : "rgba(0,0,0,.4)") + ";color:#fff;letter-spacing:.16em;font-size:10px;text-transform:uppercase;";
-      b.onclick = function () {
-        try { localStorage.setItem("sharako.voice", name); } catch (_) {}
-        try { window.__sharakoGrokStop && window.__sharakoGrokStop(); } catch (_) {}
-        mountSwitch();
-      };
-      return b;
-    }
-    box.appendChild(btn("Girl", GIRL));
-    box.appendChild(btn("Guy", GUY));
-    document.body.appendChild(box);
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mountSwitch);
-  else mountSwitch();
+  try {
+    var old = document.getElementById("sharako-voice-switch");
+    if (old) old.remove();
+    localStorage.removeItem("sharako.voice");
+  } catch (_) {}
 
   const PLAYOUT_LEAD_S = 0.06;
   const PREROLL_SAMPLES = 2880;
