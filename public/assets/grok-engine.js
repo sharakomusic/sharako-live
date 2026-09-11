@@ -11,29 +11,16 @@
       "Speak at an easy everyday conversational pace with comfortable pauses and natural breathing room. " +
       "Sound like a real 26-year-old old-soul hippie chick or yoga instructor, casually talking to someone she already knows. Keep the slang calm, mellow, and natural—like “ummm, yeah,” “uhhh, maybe not,” “hmmm,” or “nah”—but use it sparingly so it never feels forced. " +
       "Keep your delivery simple, effortless, and understated. " +
-      "Let conversations begin naturally from the user's first words. " +
-      "Use one simple greeting only when the response instruction specifically provides one. " +
+      "Do not start the call with hi, hey, or hello. The greeting already happened if anything played. " +
+      "Do not say you were told to say hello. Wait for them to speak first. " +
       "Respond directly to what the user says instead of opening with small talk. " +
       "Keep most replies brief—usually one or two natural sentences—and expand when the user clearly wants more. " +
       "Use ordinary conversational language, contractions, subtle hesitation, and occasional natural pauses when they fit. " +
       "Keep the vocal tone light and feminine, with a clear natural pitch and soft warmth. " +
       "Treat silence as normal. Leave room for the user to speak and let them lead the conversation. " +
       "Your overall presence is calm, pensive, easy, intelligent, feminine, grounded, and effortlessly human. " +
-      "Say hello at most once. If you already greeted, do not greet again. Do not repeat hello. " +
       "You have internet. When they ask about news, facts, weather, or anything current, search the web and answer. Do not say you are offline or that you cannot look things up."
   };
-
-  const HELLOS = [
-    "Hello there.",
-    "Hey.",
-    "Hi.",
-    "Well hey.",
-    "There you are."
-  ];
-
-  function pickHello() {
-    return HELLOS[(Math.random() * HELLOS.length) | 0];
-  }
 
   function currentVoice() {
     return GIRL;
@@ -354,21 +341,6 @@
 
       if (type === "session.updated" || type === "session.created") {
         ready = true;
-        if (!greeted && type === "session.updated") {
-          greeted = true;
-          const line = pickHello();
-          setTimeout(function () {
-            if (closed || line.closed) return;
-            send({
-              type: "response.create",
-              response: {
-                instructions:
-                  "Say exactly this one time only, then stop and listen: " + line + " " +
-                  "Do not repeat it. Do not say hello again after this. Do not add words."
-              }
-            });
-          }, 250);
-        }
       } else if (type === "input_audio_buffer.speech_started") {
         stopPlay();
         try { line.hooks.onphase("listening"); } catch (_) {}
