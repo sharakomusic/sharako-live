@@ -1,8 +1,8 @@
-/* Grok voice — Carina only. 24 kHz. No Girl/Guy buttons. */
+/* Grok voice — ara only. 24 kHz. No Girl/Guy buttons. */
 (function () {
   const GROK_RATE = 24000;
   const GIRL = "ara";
-  const SPEED = 1.00;
+  const SPEED = 1.06;
   const MODEL = "grok-voice-think-fast-2.0";
   const PROMPTS = {
     ara:
