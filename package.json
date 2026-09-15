@@ -1,4 +1,5 @@
 {
   "name": "sharako-live",
-  "private": true
+  "private": true,
+  "version": "1034.0.0"
 }
