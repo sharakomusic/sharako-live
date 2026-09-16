@@ -120,30 +120,58 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     }
     throw last || new Error("camera");
   }
+  function camShell(msg) {
+    var wrap = document.querySelector("[data-sharako-cam]");
+    if (wrap) wrap.remove();
+    wrap = document.createElement("div");
+    wrap.setAttribute("data-sharako-cam", "1");
+    wrap.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#000;display:flex;flex-direction:column;color:#fff";
+    var top = document.createElement("div");
+    top.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;text-align:center;letter-spacing:.18em;font-size:.78rem;opacity:.85";
+    top.textContent = msg || "Opening camera…";
+    var x = document.createElement("button");
+    x.type = "button";
+    x.textContent = "CLOSE";
+    x.style.cssText = "flex-shrink:0;height:3.5rem;margin:0 1.25rem max(1.25rem,env(safe-area-inset-bottom));border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
+    x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); busy = false; wrap.remove(); };
+    wrap.append(top, x);
+    document.body.appendChild(wrap);
+    return { wrap: wrap, top: top, closeBtn: x };
+  }
   async function showHer() {
     if (busy) return;
     busy = true;
+    var ui = camShell("Opening camera…");
     var stream = null;
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("no getUserMedia");
+      }
       stream = await openCam();
-      var wrap = document.createElement("div");
-      wrap.setAttribute("data-sharako-cam", "1");
-      wrap.style.cssText = "position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column";
+      ui.wrap.innerHTML = "";
       var video = document.createElement("video");
-      video.setAttribute("playsinline", "");
-      video.setAttribute("autoplay", "");
+      video.setAttribute("playsinline", "true");
+      video.setAttribute("webkit-playsinline", "true");
+      video.setAttribute("autoplay", "true");
       video.muted = true;
       video.autoplay = true;
-      video.style.cssText = "flex:1;width:100%;object-fit:cover;background:#000";
+      video.playsInline = true;
+      video.style.cssText = "flex:1;width:100%;height:100%;object-fit:cover;background:#000";
       video.srcObject = stream;
+      var row = document.createElement("div");
+      row.style.cssText = "flex-shrink:0;display:flex;gap:.75rem;padding:0 1.25rem max(1.25rem,env(safe-area-inset-bottom))";
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = "SHOW HER";
-      btn.style.cssText = "flex-shrink:0;height:3.5rem;margin:0 1.25rem max(1.25rem,env(safe-area-inset-bottom));border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
+      btn.style.cssText = "flex:1;height:3.5rem;border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
+      var x = document.createElement("button");
+      x.type = "button";
+      x.textContent = "CLOSE";
+      x.style.cssText = "flex:0 0 6.5rem;height:3.5rem;border:0;border-radius:999px;background:#ffffff22;color:#fff;letter-spacing:.18em;font-size:.72rem";
       var close = function () {
         busy = false;
         try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-        wrap.remove();
+        if (ui.wrap.parentNode) ui.wrap.remove();
       };
       btn.onclick = function (e) {
         e.preventDefault();
@@ -152,11 +180,14 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         if (pic) sendSight(pic);
         close();
       };
-      wrap.append(video, btn);
-      document.body.append(wrap);
-      video.play().catch(function () {});
+      x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); close(); };
+      row.append(btn, x);
+      ui.wrap.append(video, row);
+      try { await video.play(); } catch (e) {}
     } catch (e) {
-      busy = false;
+      var m = (e && (e.name || e.message)) ? String(e.name || e.message) : "camera";
+      ui.top.textContent = "Allow Camera for SHARAKO in Settings, then tap See again. (" + m + ")";
+      ui.closeBtn.onclick = function (ev) { ev.preventDefault(); busy = false; ui.wrap.remove(); };
       try { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); } catch (x) {}
     }
   }
