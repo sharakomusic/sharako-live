@@ -124,7 +124,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         client.connect();
       });
       lineBar("CALLING HER…", true);
-      var call = client.newCall({ destinationNumber: N, callerNumber: N, audio: true, video: false });
+      var call = client.newCall({ destinationNumber: N, audio: true, video: false });
       tx.call = call;
       try { audio.play(); } catch (e) {}
     } catch (e) {
