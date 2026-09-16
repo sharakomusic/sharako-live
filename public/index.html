@@ -70,7 +70,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     if (tx.call) { hangup(); return; }
     if (tx.busy) return;
     tx.busy = true;
-    lineBar("CONNECTING…", true);
+    lineBar("CONNECTING LINE…", true);
     try {
       try {
         if (window.AndroidVoice && window.AndroidVoice.startCommunicationAudioWithSpeaker) {
