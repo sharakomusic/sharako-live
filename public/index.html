@@ -113,8 +113,12 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         if (type === "userMediaError") { lineBar("ALLOW MIC", true); return; }
         if (st === "trying" || st === "requesting" || st === "connecting" || st === "ringing") lineBar("RINGING…", true);
         if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
-        if (st === "hangup" || st === "destroy" || st === "purge") hangup((note && note.error) ? errText(note.error) : "ended");
-        if (note && note.error) lineBar(errText(note.error), true);
+        if (st === "hangup" || st === "destroy" || st === "purge") {
+          tx.busy = false;
+          lineBar("LINE FAILED: not connected — attach SHARAKO to the outbound profile", true);
+          return;
+        }
+        if (note && note.error) lineBar("LINE ERROR " + errText(note.error), true);
       });
       await new Promise(function (resolve, reject) {
         var t = setTimeout(function () { reject(new Error("login timeout")); }, 20000);
@@ -123,7 +127,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         client.connect();
       });
       lineBar("CALLING HER…", true);
-      var call = client.newCall({ destinationNumber: N, audio: true, video: false });
+      var call = client.newCall({ destinationNumber: N, callerNumber: N, audio: true, video: false });
       tx.call = call;
       try { audio.play(); } catch (e) {}
     } catch (e) {
