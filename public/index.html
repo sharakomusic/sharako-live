@@ -162,19 +162,14 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   }
   function restyleSpeaker() {
     document.querySelectorAll("button").forEach(function (b) {
-      var label = ((b.getAttribute("aria-label") || "") + " " + (b.textContent || "")).trim();
-      var up = label.toUpperCase();
-      var isSpeaker = up.indexOf("SPEAKER") !== -1;
-      var isSee = b.getAttribute("aria-label") === "See" || up === "SEE";
-      if (!isSpeaker && !isSee) return;
+      var aria = (b.getAttribute("aria-label") || "").trim();
+      if (aria !== "Speaker") return;
       if (b.getAttribute("data-eye") === "1") return;
       b.setAttribute("data-eye", "1");
       b.setAttribute("aria-label", "See");
-      b.querySelectorAll("span").forEach(function (s) {
-        var x = (s.textContent || "").trim().toUpperCase();
-        if (x === "SPEAKER" || x === "SEE") s.textContent = "See";
-      });
-      var icon = b.querySelector("span.flex, span.rounded-full");
+      var vis = b.querySelector("span.absolute");
+      if (vis) vis.textContent = "See";
+      var icon = b.querySelector("span.h-14.w-14");
       if (icon) icon.innerHTML = eyeSvg();
       var go = function (e) {
         e.preventDefault();
