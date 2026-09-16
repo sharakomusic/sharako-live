@@ -287,9 +287,44 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       b.addEventListener("touchend", go, true);
     });
   }
+    var _play = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () {
+    if (this.id === "sharako-remote") return _play.apply(this, arguments);
+    if (document.querySelector("[data-sharako-line]")) {
+      try { this.pause(); this.muted = true; } catch (e) {}
+      return Promise.resolve();
+    }
+    return _play.apply(this, arguments);
+  };
+  function restyleCall() {
+    document.querySelectorAll("button").forEach(function (b) {
+      var aria = (b.getAttribute("aria-label") || "").trim();
+      if (aria !== "Call") return;
+      if (b.getAttribute("data-line") === "1") return;
+      b.setAttribute("data-line", "1");
+      var go = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        if (window.__sharakoStartLine) window.__sharakoStartLine();
+      };
+      b.addEventListener("pointerdown", go, true);
+      b.addEventListener("touchstart", go, true);
+      b.addEventListener("touchend", go, true);
+      b.addEventListener("click", go, true);
+    });
+  }
+  function killOldRing() {
+    document.querySelectorAll("audio").forEach(function (a) {
+      if (a.id === "sharako-remote") return;
+      try { a.pause(); a.muted = true; a.volume = 0; } catch (e) {}
+    });
+  }
   function tick() {
     hideWall();
     restyleSpeaker();
+    restyleCall();
+    killOldRing();
   }
   new MutationObserver(tick).observe(document.documentElement, { childList: true, subtree: true });
   setInterval(tick, 800);
