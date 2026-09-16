@@ -35,14 +35,20 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       el.appendChild(b);
     }
   }
-  function hangup() {
+  function hangup(reason) {
+    if (tx.dead) return;
+    tx.dead = true;
     tx.busy = false;
-    try { if (tx.call && tx.call.hangup) tx.call.hangup(); } catch (e) {}
-    try { if (tx.client && tx.client.disconnect) tx.client.disconnect(); } catch (e) {}
+    var call = tx.call, client = tx.client;
     tx.call = null;
     tx.client = null;
-    var el = document.querySelector("[data-sharako-line]");
-    if (el) el.remove();
+    try { if (call && call.hangup) call.hangup(); } catch (e) {}
+    try { if (client && client.disconnect) client.disconnect(); } catch (e) {}
+    if (reason) lineBar("LINE FAILED: " + String(reason).slice(0,80), true);
+    else {
+      var el = document.querySelector("[data-sharako-line]");
+      if (el) el.remove();
+    }
     try {
       if (window.AndroidVoice && window.AndroidVoice.stopCommunicationAudio) window.AndroidVoice.stopCommunicationAudio();
     } catch (e) {}
@@ -73,6 +79,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   }
   async function startLine() {
     if (tx.call) { hangup(); return; }
+    tx.dead = false;
     if (tx.busy) return;
     tx.busy = true;
     lineBar("CONNECTING LINE…", true);
@@ -107,7 +114,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         if (type === "userMediaError") { lineBar("ALLOW MIC", true); return; }
         if (st === "trying" || st === "requesting" || st === "connecting" || st === "ringing") lineBar("RINGING…", true);
         if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
-        if (st === "hangup" || st === "destroy" || st === "purge") hangup();
+        if (st === "hangup" || st === "destroy" || st === "purge") hangup((note && note.error) ? errText(note.error) : "ended");
         if (note && note.error) lineBar(errText(note.error), true);
       });
       await new Promise(function (resolve, reject) {
@@ -290,6 +297,11 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     var _play = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () {
     if (this.id === "sharako-remote") return _play.apply(this, arguments);
+    var src = this.currentSrc || this.src || "";
+    if (/hello\.mp3|serenade|elise|callme|ringtone/i.test(src)) {
+      try { this.pause(); this.muted = true; } catch (e) {}
+      return Promise.resolve();
+    }
     if (document.querySelector("[data-sharako-line]")) {
       try { this.pause(); this.muted = true; } catch (e) {}
       return Promise.resolve();
