@@ -92,23 +92,9 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       return false;
     }
   }
-  function snap(video) {
+  function snapCanvas(c) {
     try {
-      var w = video.videoWidth || video.clientWidth || 0;
-      var h = video.videoHeight || video.clientHeight || 0;
-      if (w < 8) w = 720;
-      if (h < 8) h = 1280;
-      var max = 1024;
-      if (w > max || h > max) {
-        var s = max / Math.max(w, h);
-        w = Math.round(w * s);
-        h = Math.round(h * s);
-      }
-      var c = document.createElement("canvas");
-      c.width = w;
-      c.height = h;
-      var ctx = c.getContext("2d");
-      ctx.drawImage(video, 0, 0, w, h);
+      if (!c || c.width < 8 || c.height < 8) return null;
       var pic = c.toDataURL("image/jpeg", 0.85);
       if (!pic || pic.length < 800) return null;
       return pic;
@@ -126,15 +112,15 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     document.body.appendChild(wrap);
     return wrap;
   }
-  function showStill(pic) {
+  function showStill(pic, noteText) {
     busy = true;
     var wrap = shell();
     var img = document.createElement("img");
     img.src = pic;
     img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000";
     var note = document.createElement("div");
-    note.textContent = "GOT IT";
-    note.style.cssText = "position:absolute;top:max(1rem,env(safe-area-inset-top));left:0;right:0;text-align:center;letter-spacing:.28em;font-size:.72rem";
+    note.textContent = noteText || "GOT IT";
+    note.style.cssText = "position:absolute;top:max(1rem,env(safe-area-inset-top));left:0;right:0;text-align:center;letter-spacing:.28em;font-size:.72rem;z-index:3";
     var x = document.createElement("button");
     x.type = "button";
     x.textContent = "CLOSE";
@@ -161,6 +147,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     var wrap = shell();
     var stream = null;
     var taken = false;
+    var raf = 0;
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("no camera");
       stream = await openCam();
@@ -173,18 +160,25 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       video.playsInline = true;
       video.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000;pointer-events:none";
       video.srcObject = stream;
+      var cap = document.createElement("canvas");
+      var ctx = cap.getContext("2d");
+      var hasFrame = false;
+      var hud = document.createElement("div");
+      hud.style.cssText = "position:absolute;top:max(2.4rem,calc(env(safe-area-inset-top) + 1.6rem));left:0;right:0;text-align:center;letter-spacing:.14em;font-size:.58rem;opacity:.7;z-index:5;pointer-events:none";
+      hud.textContent = "starting…";
       var flash = document.createElement("div");
       flash.style.cssText = "position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4;transition:opacity .08s";
-      var shutter = document.createElement("button");
-      shutter.type = "button";
-      shutter.setAttribute("aria-label", "Take picture");
-      shutter.style.cssText = "position:absolute;left:50%;bottom:max(1.6rem,env(safe-area-inset-bottom));transform:translateX(-50%);width:7.5rem;height:7.5rem;z-index:6;border:0;background:transparent;padding:0";
-      shutter.innerHTML = '<span style="display:block;width:4.6rem;height:4.6rem;margin:0 auto;border:4px solid #fff;border-radius:999px;background:#fff;box-shadow:0 0 0 3px #000,0 0 0 7px #fff"></span><span style="display:block;margin-top:.45rem;letter-spacing:.22em;font-size:.62rem;color:#fff">TAKE</span>';
+      var bar = document.createElement("button");
+      bar.type = "button";
+      bar.setAttribute("aria-label", "Take picture");
+      bar.style.cssText = "position:absolute;left:1.25rem;right:1.25rem;bottom:max(1.25rem,env(safe-area-inset-bottom));height:4.2rem;z-index:6;border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.28em;font-size:.78rem";
+      bar.textContent = "TAKE PHOTO";
       var x = document.createElement("button");
       x.type = "button";
       x.textContent = "CLOSE";
       x.style.cssText = "position:absolute;top:max(.9rem,env(safe-area-inset-top));right:1rem;z-index:6;border:0;background:transparent;color:#fff;letter-spacing:.18em;font-size:.7rem";
       var stop = function () {
+        if (raf) cancelAnimationFrame(raf);
         try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
       };
       var close = function () {
@@ -194,32 +188,49 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         if (wrap.parentNode) wrap.remove();
       };
       x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); close(); };
-      var take = function (e) {
-        if (e) { e.preventDefault(); e.stopPropagation(); }
+      function tickCam() {
         if (taken) return;
-        var pic = null;
-        for (var i = 0; i < 6 && !pic; i++) pic = snap(video);
-        if (!pic) return;
+        var w = video.videoWidth || 0;
+        var h = video.videoHeight || 0;
+        if (w > 8 && h > 8) {
+          if (cap.width !== w || cap.height !== h) { cap.width = w; cap.height = h; }
+          try { ctx.drawImage(video, 0, 0, w, h); hasFrame = true; hud.textContent = w + " × " + h + "  ready"; }
+          catch (err) { hud.textContent = "draw " + (err && err.message ? err.message : "fail"); }
+        } else {
+          hud.textContent = "waiting for picture…";
+        }
+        raf = requestAnimationFrame(tickCam);
+      }
+      var take = function (e) {
+        if (e) { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation && e.stopImmediatePropagation(); }
+        if (taken) return;
+        hud.textContent = hasFrame ? "capturing…" : "no frame yet";
+        var pic = snapCanvas(cap);
+        if (!pic) {
+          hud.textContent = "couldn’t freeze frame — try again";
+          return;
+        }
         taken = true;
         flash.style.opacity = "1";
         try { sendSight(pic); } catch (err) {}
         setTimeout(function () {
           stop();
           showStill(pic);
-        }, 90);
+        }, 80);
       };
-      shutter.addEventListener("click", take, true);
-      shutter.addEventListener("touchend", take, true);
-      shutter.addEventListener("pointerup", take, true);
-      wrap.append(video, flash, shutter, x);
-      try { await video.play(); } catch (e) {}
+      bar.addEventListener("touchstart", take, { capture: true, passive: false });
+      bar.addEventListener("pointerdown", take, true);
+      bar.addEventListener("click", take, true);
+      wrap.append(video, flash, hud, bar, x);
+      try { await video.play(); } catch (e) { hud.textContent = "play " + (e && e.message ? e.message : "fail"); }
+      raf = requestAnimationFrame(tickCam);
     } catch (e) {
       busy = false;
       try { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); } catch (x) {}
       wrap.innerHTML = "";
       var msg = document.createElement("div");
       msg.style.cssText = "margin:auto;padding:2rem;text-align:center;letter-spacing:.16em;font-size:.78rem;opacity:.9";
-      msg.textContent = "Allow Camera for SHARAKO in Settings, then tap See again.";
+      msg.textContent = "Allow Camera for SHARAKO in Settings, then tap See again. " + (e && (e.name || e.message) ? "(" + (e.name || e.message) + ")" : "");
       var x2 = document.createElement("button");
       x2.type = "button";
       x2.textContent = "CLOSE";
