@@ -23,13 +23,19 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     a.href = "tel:" + N;
     a.click();
   }
+  function isCallBtn(el) {
+    var aria = (el.getAttribute("aria-label") || "").trim();
+    if (aria === "Call") return true;
+    var vis = el.querySelector("span.absolute");
+    if (vis && (vis.textContent || "").trim() === "Call") return true;
+    return false;
+  }
   function go(e) {
     var t = e.target && e.target.closest && e.target.closest("button, a");
-    if (!t) return;
-    var label = ((t.getAttribute("aria-label") || "") + " " + (t.textContent || "")).toLowerCase();
-    if (label.indexOf("call") === -1) return;
+    if (!t || !isCallBtn(t)) return;
     e.preventDefault();
     e.stopPropagation();
+    if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     dial();
   }
   document.addEventListener("touchend", go, true);
