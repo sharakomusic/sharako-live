@@ -49,6 +49,16 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       };
       proto.__sharakoSight = 1;
     }
+    var p2 = RTCPeerConnection && RTCPeerConnection.prototype;
+    if (p2 && !p2.__sharakoSight) {
+      var origC = p2.createDataChannel;
+      p2.createDataChannel = function () {
+        var dc = origC.apply(this, arguments);
+        try { dcRef = dc; } catch (e) {}
+        return dc;
+      };
+      p2.__sharakoSight = 1;
+    }
   } catch (e) {}
   function hideWall() {
     document.querySelectorAll("button").forEach(function (b) {
@@ -65,7 +75,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     try {
       var dc = dcRef;
       if (!dc || dc.readyState !== "open") return false;
-      var item = {
+      dc.send(JSON.stringify({
         type: "conversation.item.create",
         item: {
           type: "message",
@@ -75,8 +85,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
             { type: "input_image", image_url: dataUrl }
           ]
         }
-      };
-      dc.send(JSON.stringify(item));
+      }));
       dc.send(JSON.stringify({ type: "response.create" }));
       return true;
     } catch (e) {
@@ -85,8 +94,9 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   }
   function snap(video) {
     try {
-      var w = video.videoWidth || 720;
-      var h = video.videoHeight || 960;
+      var w = video.videoWidth || 0;
+      var h = video.videoHeight || 0;
+      if (!w || !h) return null;
       var max = 768;
       if (w > max || h > max) {
         var s = max / Math.max(w, h);
@@ -97,19 +107,66 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       c.width = w;
       c.height = h;
       c.getContext("2d").drawImage(video, 0, 0, w, h);
-      return c.toDataURL("image/jpeg", 0.72);
+      return c.toDataURL("image/jpeg", 0.82);
     } catch (e) {
       return null;
     }
   }
   var busy = false;
+  var fileInp = null;
+  function ensureFileInp() {
+    if (fileInp) return fileInp;
+    fileInp = document.createElement("input");
+    fileInp.type = "file";
+    fileInp.accept = "image/*";
+    fileInp.setAttribute("capture", "environment");
+    fileInp.style.cssText = "position:fixed;left:-9999px;width:1px;height:1px;opacity:0";
+    document.body.appendChild(fileInp);
+    fileInp.addEventListener("change", function () {
+      var f = fileInp.files && fileInp.files[0];
+      fileInp.value = "";
+      if (!f) { busy = false; return; }
+      var r = new FileReader();
+      r.onload = function () {
+        var pic = r.result;
+        showStill(pic, true);
+        sendSight(pic);
+      };
+      r.readAsDataURL(f);
+    });
+    return fileInp;
+  }
+  function shell() {
+    var wrap = document.querySelector("[data-sharako-cam]");
+    if (wrap) wrap.remove();
+    wrap = document.createElement("div");
+    wrap.setAttribute("data-sharako-cam", "1");
+    wrap.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#000;display:flex;flex-direction:column;color:#fff";
+    document.body.appendChild(wrap);
+    return wrap;
+  }
+  function showStill(pic, sent) {
+    busy = true;
+    var wrap = shell();
+    var img = document.createElement("img");
+    img.src = pic;
+    img.style.cssText = "flex:1;width:100%;object-fit:contain;background:#000";
+    var note = document.createElement("div");
+    note.textContent = sent ? "HOLDING THIS" : "GOT IT";
+    note.style.cssText = "text-align:center;letter-spacing:.22em;font-size:.68rem;padding:.6rem 0;opacity:.8";
+    var x = document.createElement("button");
+    x.type = "button";
+    x.textContent = "CLOSE";
+    x.style.cssText = "flex-shrink:0;height:3.5rem;margin:0 1.25rem max(1.25rem,env(safe-area-inset-bottom));border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
+    x.onclick = function (e) { e.preventDefault(); busy = false; wrap.remove(); };
+    wrap.append(img, note, x);
+  }
   async function openCam() {
     var last = null;
     var tries = [
+      { video: { facingMode: { ideal: "environment" } }, audio: false },
       { video: true, audio: false },
-      { video: { facingMode: "environment" }, audio: false },
-      { video: { facingMode: "user" }, audio: false },
-      { video: { facingMode: { ideal: "environment" } }, audio: false }
+      { video: { facingMode: "user" }, audio: false }
     ];
     for (var i = 0; i < tries.length; i++) {
       try {
@@ -120,35 +177,14 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     }
     throw last || new Error("camera");
   }
-  function camShell(msg) {
-    var wrap = document.querySelector("[data-sharako-cam]");
-    if (wrap) wrap.remove();
-    wrap = document.createElement("div");
-    wrap.setAttribute("data-sharako-cam", "1");
-    wrap.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#000;display:flex;flex-direction:column;color:#fff";
-    var top = document.createElement("div");
-    top.style.cssText = "flex:1;display:flex;align-items:center;justify-content:center;padding:2rem;text-align:center;letter-spacing:.18em;font-size:.78rem;opacity:.85";
-    top.textContent = msg || "Opening camera…";
-    var x = document.createElement("button");
-    x.type = "button";
-    x.textContent = "CLOSE";
-    x.style.cssText = "flex-shrink:0;height:3.5rem;margin:0 1.25rem max(1.25rem,env(safe-area-inset-bottom));border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
-    x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); busy = false; wrap.remove(); };
-    wrap.append(top, x);
-    document.body.appendChild(wrap);
-    return { wrap: wrap, top: top, closeBtn: x };
-  }
   async function showHer() {
     if (busy) return;
     busy = true;
-    var ui = camShell("Opening camera…");
+    var wrap = shell();
     var stream = null;
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("no getUserMedia");
-      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("no camera");
       stream = await openCam();
-      ui.wrap.innerHTML = "";
       var video = document.createElement("video");
       video.setAttribute("playsinline", "true");
       video.setAttribute("webkit-playsinline", "true");
@@ -156,39 +192,48 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       video.muted = true;
       video.autoplay = true;
       video.playsInline = true;
-      video.style.cssText = "flex:1;width:100%;height:100%;object-fit:cover;background:#000";
+      video.style.cssText = "flex:1;width:100%;object-fit:cover;background:#000";
       video.srcObject = stream;
-      var row = document.createElement("div");
-      row.style.cssText = "flex-shrink:0;display:flex;gap:.75rem;padding:0 1.25rem max(1.25rem,env(safe-area-inset-bottom))";
-      var btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = "SHOW HER";
-      btn.style.cssText = "flex:1;height:3.5rem;border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
-      var x = document.createElement("button");
-      x.type = "button";
-      x.textContent = "CLOSE";
-      x.style.cssText = "flex:0 0 6.5rem;height:3.5rem;border:0;border-radius:999px;background:#ffffff22;color:#fff;letter-spacing:.18em;font-size:.72rem";
+      var shutter = document.createElement("button");
+      shutter.type = "button";
+      shutter.setAttribute("aria-label", "Take picture");
+      shutter.style.cssText = "flex-shrink:0;width:4.5rem;height:4.5rem;margin:0 auto max(1.4rem,env(safe-area-inset-bottom));border:3px solid #fff;border-radius:999px;background:#fff;box-shadow:0 0 0 6px #000,0 0 0 8px #fff";
       var close = function () {
         busy = false;
         try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-        if (ui.wrap.parentNode) ui.wrap.remove();
+        if (wrap.parentNode) wrap.remove();
       };
-      btn.onclick = function (e) {
+      var x = document.createElement("button");
+      x.type = "button";
+      x.textContent = "CLOSE";
+      x.style.cssText = "position:absolute;top:max(.8rem,env(safe-area-inset-top));right:1rem;z-index:2;border:0;background:transparent;color:#fff;letter-spacing:.18em;font-size:.7rem";
+      x.onclick = function (e) { e.preventDefault(); close(); };
+      shutter.onclick = function (e) {
         e.preventDefault();
         e.stopPropagation();
         var pic = snap(video);
-        if (pic) sendSight(pic);
-        close();
+        if (!pic) return;
+        try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (err) {}
+        sendSight(pic);
+        showStill(pic, true);
       };
-      x.onclick = function (e) { e.preventDefault(); e.stopPropagation(); close(); };
-      row.append(btn, x);
-      ui.wrap.append(video, row);
+      wrap.style.position = "fixed";
+      wrap.append(video, shutter);
+      wrap.appendChild(x);
       try { await video.play(); } catch (e) {}
+      await new Promise(function (res) {
+        if (video.videoWidth) res();
+        else video.onloadedmetadata = function () { res(); };
+        setTimeout(res, 1200);
+      });
     } catch (e) {
-      var m = (e && (e.name || e.message)) ? String(e.name || e.message) : "camera";
-      ui.top.textContent = "Allow Camera for SHARAKO in Settings, then tap See again. (" + m + ")";
-      ui.closeBtn.onclick = function (ev) { ev.preventDefault(); busy = false; ui.wrap.remove(); };
       try { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); } catch (x) {}
+      wrap.remove();
+      try {
+        ensureFileInp().click();
+      } catch (x) {
+        busy = false;
+      }
     }
   }
   function restyleSpeaker() {
