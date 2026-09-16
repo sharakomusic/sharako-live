@@ -13,29 +13,18 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
 (function () {
   var N = "+14452968787";
   var tx = { client: null, call: null, busy: false };
-  function nativeDial() {
-    try {
-      if (window.AndroidVoice && window.AndroidVoice.dial) {
-        window.AndroidVoice.dial(N);
-        return;
-      }
-    } catch (e) {}
-    var a = document.createElement("a");
-    a.href = "tel:" + N;
-    a.click();
-  }
   function lineBar(text, canHang) {
     var el = document.querySelector("[data-sharako-line]");
     if (!el) {
       el = document.createElement("div");
       el.setAttribute("data-sharako-line", "1");
-      el.style.cssText = "position:fixed;left:1rem;right:1rem;bottom:max(6.2rem,calc(env(safe-area-inset-bottom) + 5.2rem));z-index:70;display:flex;gap:.7rem;align-items:center;justify-content:center";
+      el.style.cssText = "position:fixed;left:.8rem;right:.8rem;bottom:max(6.2rem,calc(env(safe-area-inset-bottom) + 5.2rem));z-index:80;display:flex;flex-wrap:wrap;gap:.55rem;align-items:center;justify-content:center";
       document.body.appendChild(el);
     }
     el.innerHTML = "";
     var n = document.createElement("div");
     n.textContent = text;
-    n.style.cssText = "letter-spacing:.2em;font-size:.66rem;color:#fff;text-shadow:0 1px 2px #000";
+    n.style.cssText = "letter-spacing:.12em;font-size:.62rem;color:#fff;text-shadow:0 1px 2px #000;text-align:center;max-width:100%";
     el.appendChild(n);
     if (canHang) {
       var b = document.createElement("button");
@@ -58,6 +47,25 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       if (window.AndroidVoice && window.AndroidVoice.stopCommunicationAudio) window.AndroidVoice.stopCommunicationAudio();
     } catch (e) {}
   }
+  function loadSdk() {
+    return new Promise(function (resolve, reject) {
+      if (window.TelnyxWebRTC && window.TelnyxWebRTC.TelnyxRTC) return resolve(window.TelnyxWebRTC.TelnyxRTC);
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/@telnyx/webrtc@2.27.10/lib/bundle.js";
+      s.onload = function () {
+        var T = window.TelnyxWebRTC && window.TelnyxWebRTC.TelnyxRTC;
+        if (!T) reject(new Error("sdk missing"));
+        else resolve(T);
+      };
+      s.onerror = function () { reject(new Error("sdk load")); };
+      document.head.appendChild(s);
+    });
+  }
+  function errText(e) {
+    if (!e) return "failed";
+    if (typeof e === "string") return e;
+    return e.message || e.error || e.reason || e.type || String(e);
+  }
   async function startLine() {
     if (tx.call) { hangup(); return; }
     if (tx.busy) return;
@@ -66,55 +74,60 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     try {
       try {
         if (window.AndroidVoice && window.AndroidVoice.startCommunicationAudioWithSpeaker) {
-          window.AndroidVoice.startCommunicationAudioWithSpeaker("1");
+          window.AndroidVoice.startCommunicationAudioWithSpeaker(true);
         }
       } catch (e) {}
       var cfg = await fetch("/api/telnyx-token", { method: "POST" }).then(function (r) { return r.json(); }).catch(function () { return {}; });
-      if (!cfg || !cfg.ok) {
-        tx.busy = false;
-        lineBar("OPENING THE PHONE LINE", false);
-        setTimeout(function () { var el = document.querySelector("[data-sharako-line]"); if (el) el.remove(); }, 1200);
-        nativeDial();
-        return;
-      }
-      var mod = await import("https://esm.sh/@telnyx/webrtc@2.22.14");
-      var TelnyxRTC = mod.TelnyxRTC;
+      if (!cfg || !cfg.ok || !cfg.login) throw new Error("no login");
+      lineBar("LOADING LINE…", true);
+      var TelnyxRTC = await loadSdk();
       var audio = document.getElementById("sharako-remote");
       if (!audio) {
         audio = document.createElement("audio");
         audio.id = "sharako-remote";
         audio.autoplay = true;
+        audio.playsInline = true;
         audio.setAttribute("playsinline", "true");
         audio.setAttribute("autoplay", "true");
         document.body.appendChild(audio);
       }
       var client = new TelnyxRTC({
         login: cfg.login,
-        password: cfg.password,
-        login_token: cfg.login_token || undefined,
-        ringtoneFile: false,
-        ringbackFile: false
+        password: cfg.password
       });
       client.remoteElement = audio;
       tx.client = client;
+      client.on("telnyx.error", function (err) {
+        lineBar("LINE ERROR " + errText(err), true);
+      });
+      client.on("telnyx.notification", function (note) {
+        var type = note && note.type;
+        var call = note && note.call;
+        var st = call && call.state;
+        if (type === "userMediaError") { lineBar("ALLOW MIC", true); return; }
+        if (st === "trying" || st === "requesting" || st === "connecting" || st === "ringing") lineBar("RINGING…", true);
+        if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
+        if (st === "hangup" || st === "destroy" || st === "purge") hangup();
+        if (type === "callUpdate" && note && note.error) lineBar(errText(note.error), true);
+      });
       await new Promise(function (resolve, reject) {
-        var t = setTimeout(function () { reject(new Error("timeout")); }, 15000);
+        var t = setTimeout(function () { reject(new Error("login timeout")); }, 20000);
         client.on("telnyx.ready", function () { clearTimeout(t); resolve(); });
         client.on("telnyx.error", function (err) { clearTimeout(t); reject(err || new Error("telnyx")); });
         client.connect();
       });
-      var call = client.newCall({ destinationNumber: N, audio: true, video: false });
-      tx.call = call;
-      call.on("telnyx.notification", function (note) {
-        var st = note && note.call && note.call.state;
-        if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
-        if (st === "hangup" || st === "destroy" || st === "purge") hangup();
+      lineBar("CALLING HER…", true);
+      var call = client.newCall({
+        destinationNumber: N,
+        callerNumber: N,
+        audio: true,
+        video: false
       });
-      lineBar("RINGING…", true);
+      tx.call = call;
+      try { audio.play(); } catch (e) {}
     } catch (e) {
       tx.busy = false;
-      hangup();
-      nativeDial();
+      lineBar("LINE FAILED: " + errText(e), true);
     }
   }
   function isCallBtn(el) {
@@ -134,6 +147,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   }
   document.addEventListener("touchend", go, true);
   document.addEventListener("click", go, true);
+})();
 })();
 </script>
 <script>
