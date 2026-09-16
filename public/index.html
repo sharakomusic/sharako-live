@@ -50,15 +50,20 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   function loadSdk() {
     return new Promise(function (resolve, reject) {
       if (window.TelnyxWebRTC && window.TelnyxWebRTC.TelnyxRTC) return resolve(window.TelnyxWebRTC.TelnyxRTC);
-      var s = document.createElement("script");
-      s.src = "https://cdn.jsdelivr.net/npm/@telnyx/webrtc@2.27.10/lib/bundle.js";
-      s.onload = function () {
-        var T = window.TelnyxWebRTC && window.TelnyxWebRTC.TelnyxRTC;
-        if (!T) reject(new Error("sdk missing"));
-        else resolve(T);
-      };
-      s.onerror = function () { reject(new Error("sdk load")); };
-      document.head.appendChild(s);
+      var srcs = ["/assets/telnyx-webrtc.js", "https://cdn.jsdelivr.net/npm/@telnyx/webrtc@2.27.10/lib/bundle.js"];
+      var i = 0;
+      function next() {
+        if (i >= srcs.length) return reject(new Error("sdk load"));
+        var s = document.createElement("script");
+        s.src = srcs[i++];
+        s.onload = function () {
+          var T = window.TelnyxWebRTC && window.TelnyxWebRTC.TelnyxRTC;
+          if (T) resolve(T); else next();
+        };
+        s.onerror = next;
+        document.head.appendChild(s);
+      }
+      next();
     });
   }
   function errText(e) {
@@ -91,15 +96,10 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         audio.setAttribute("autoplay", "true");
         document.body.appendChild(audio);
       }
-      var client = new TelnyxRTC({
-        login: cfg.login,
-        password: cfg.password
-      });
+      var client = new TelnyxRTC({ login: cfg.login, password: cfg.password });
       client.remoteElement = audio;
       tx.client = client;
-      client.on("telnyx.error", function (err) {
-        lineBar("LINE ERROR " + errText(err), true);
-      });
+      client.on("telnyx.error", function (err) { lineBar("LINE ERROR " + errText(err), true); });
       client.on("telnyx.notification", function (note) {
         var type = note && note.type;
         var call = note && note.call;
@@ -108,7 +108,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         if (st === "trying" || st === "requesting" || st === "connecting" || st === "ringing") lineBar("RINGING…", true);
         if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
         if (st === "hangup" || st === "destroy" || st === "purge") hangup();
-        if (type === "callUpdate" && note && note.error) lineBar(errText(note.error), true);
+        if (note && note.error) lineBar(errText(note.error), true);
       });
       await new Promise(function (resolve, reject) {
         var t = setTimeout(function () { reject(new Error("login timeout")); }, 20000);
@@ -117,12 +117,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         client.connect();
       });
       lineBar("CALLING HER…", true);
-      var call = client.newCall({
-        destinationNumber: N,
-        callerNumber: N,
-        audio: true,
-        video: false
-      });
+      var call = client.newCall({ destinationNumber: N, callerNumber: N, audio: true, video: false });
       tx.call = call;
       try { audio.play(); } catch (e) {}
     } catch (e) {
@@ -131,9 +126,10 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     }
   }
   function isCallBtn(el) {
+    if (!el || !el.getAttribute) return false;
     var aria = (el.getAttribute("aria-label") || "").trim();
     if (aria === "Call") return true;
-    var vis = el.querySelector("span.absolute");
+    var vis = el.querySelector && el.querySelector("span.absolute");
     if (vis && (vis.textContent || "").trim() === "Call") return true;
     return false;
   }
@@ -145,10 +141,13 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
     startLine();
   }
+  document.addEventListener("pointerdown", go, true);
+  document.addEventListener("touchstart", go, true);
   document.addEventListener("touchend", go, true);
   document.addEventListener("click", go, true);
+  window.__sharakoStartLine = startLine;
 })();
-})();
+</script>
 </script>
 <script>
 (function () {
