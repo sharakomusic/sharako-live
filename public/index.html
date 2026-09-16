@@ -78,9 +78,8 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     return e.message || e.error || e.reason || e.type || String(e);
   }
   async function startLine() {
-    if (tx.call) { hangup(); return; }
+    if (tx.busy || tx.call || tx.client) return;
     tx.dead = false;
-    if (tx.busy) return;
     tx.busy = true;
     lineBar("CONNECTING LINE…", true);
     try {
