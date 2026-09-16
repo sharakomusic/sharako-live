@@ -95,14 +95,16 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   var busy = false;
   var fileInp = null;
   function showStill(pic) {
+    if (!pic || pic.length < 800) return;
     var old = document.querySelector("[data-sharako-cam]");
     if (old) old.remove();
     var wrap = document.createElement("div");
     wrap.setAttribute("data-sharako-cam", "1");
-    wrap.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#000;color:#fff";
+    wrap.style.cssText = "position:fixed;inset:0;z-index:2147483647;background:#0b0b0b;color:#fff";
     var img = document.createElement("img");
     img.src = pic;
-    img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000";
+    img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#0b0b0b";
+    img.onerror = function () { wrap.remove(); busy = false; };
     var note = document.createElement("div");
     note.textContent = "GOT IT";
     note.style.cssText = "position:absolute;top:max(1rem,env(safe-area-inset-top));left:0;right:0;text-align:center;letter-spacing:.28em;font-size:.72rem";
@@ -120,7 +122,6 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     fileInp = document.createElement("input");
     fileInp.type = "file";
     fileInp.accept = "image/*";
-    fileInp.setAttribute("capture", "environment");
     fileInp.setAttribute("aria-hidden", "true");
     fileInp.style.cssText = "position:fixed;left:-9999px;width:1px;height:1px;opacity:0";
     fileInp.addEventListener("change", function () {
@@ -143,13 +144,14 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     if (busy) return;
     busy = true;
     try {
-      ensureFileInp().click();
+      var inp = ensureFileInp();
+      if (inp.click) inp.click();
     } catch (e) {
       busy = false;
     }
     setTimeout(function () {
       if (busy && !document.querySelector("[data-sharako-cam]")) busy = false;
-    }, 2500);
+    }, 4000);
   }
   function restyleSpeaker() {
     document.querySelectorAll("button").forEach(function (b) {
