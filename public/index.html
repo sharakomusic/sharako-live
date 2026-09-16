@@ -38,6 +38,18 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
 </script>
 <script>
 (function () {
+  var dcRef = null;
+  try {
+    var proto = RTCDataChannel && RTCDataChannel.prototype;
+    if (proto && !proto.__sharakoSight) {
+      var orig = proto.send;
+      proto.send = function () {
+        try { dcRef = this; } catch (e) {}
+        return orig.apply(this, arguments);
+      };
+      proto.__sharakoSight = 1;
+    }
+  } catch (e) {}
   function hideWall() {
     document.querySelectorAll("button").forEach(function (b) {
       var t = ((b.getAttribute("aria-label") || "") + " " + (b.textContent || "")).toUpperCase();
@@ -49,52 +61,129 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   function eyeSvg() {
     return '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12" r="2.7" fill="currentColor"/></svg>';
   }
-  async function showHer() {
+  function sendSight(dataUrl) {
     try {
-      var stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
+      var dc = dcRef;
+      if (!dc || dc.readyState !== "open") return false;
+      var item = {
+        type: "conversation.item.create",
+        item: {
+          type: "message",
+          role: "user",
+          content: [
+            { type: "input_text", text: "I'm showing you this through my camera. Look at it and tell me what you see, casually." },
+            { type: "input_image", image_url: dataUrl }
+          ]
+        }
+      };
+      dc.send(JSON.stringify(item));
+      dc.send(JSON.stringify({ type: "response.create" }));
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function snap(video) {
+    try {
+      var w = video.videoWidth || 720;
+      var h = video.videoHeight || 960;
+      var max = 768;
+      if (w > max || h > max) {
+        var s = max / Math.max(w, h);
+        w = Math.round(w * s);
+        h = Math.round(h * s);
+      }
+      var c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      c.getContext("2d").drawImage(video, 0, 0, w, h);
+      return c.toDataURL("image/jpeg", 0.72);
+    } catch (e) {
+      return null;
+    }
+  }
+  var busy = false;
+  async function openCam() {
+    var last = null;
+    var tries = [
+      { video: true, audio: false },
+      { video: { facingMode: "environment" }, audio: false },
+      { video: { facingMode: "user" }, audio: false },
+      { video: { facingMode: { ideal: "environment" } }, audio: false }
+    ];
+    for (var i = 0; i < tries.length; i++) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(tries[i]);
+      } catch (e) {
+        last = e;
+      }
+    }
+    throw last || new Error("camera");
+  }
+  async function showHer() {
+    if (busy) return;
+    busy = true;
+    var stream = null;
+    try {
+      stream = await openCam();
       var wrap = document.createElement("div");
+      wrap.setAttribute("data-sharako-cam", "1");
       wrap.style.cssText = "position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column";
       var video = document.createElement("video");
       video.setAttribute("playsinline", "");
-      video.autoplay = true;
+      video.setAttribute("autoplay", "");
       video.muted = true;
-      video.style.cssText = "flex:1;width:100%;object-fit:cover";
+      video.autoplay = true;
+      video.style.cssText = "flex:1;width:100%;object-fit:cover;background:#000";
       video.srcObject = stream;
       var btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = "SHOW HER";
       btn.style.cssText = "flex-shrink:0;height:3.5rem;margin:0 1.25rem max(1.25rem,env(safe-area-inset-bottom));border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.72rem";
       var close = function () {
+        busy = false;
         try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
         wrap.remove();
       };
-      btn.onclick = close;
+      btn.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var pic = snap(video);
+        if (pic) sendSight(pic);
+        close();
+      };
       wrap.append(video, btn);
       document.body.append(wrap);
       video.play().catch(function () {});
-    } catch (e) {}
+    } catch (e) {
+      busy = false;
+      try { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); } catch (x) {}
+    }
   }
   function restyleSpeaker() {
-    document.querySelectorAll('button[aria-label="Speaker"]').forEach(function (b) {
+    document.querySelectorAll("button").forEach(function (b) {
+      var label = ((b.getAttribute("aria-label") || "") + " " + (b.textContent || "")).trim();
+      var up = label.toUpperCase();
+      var isSpeaker = up.indexOf("SPEAKER") !== -1;
+      var isSee = b.getAttribute("aria-label") === "See" || up === "SEE";
+      if (!isSpeaker && !isSee) return;
       if (b.getAttribute("data-eye") === "1") return;
       b.setAttribute("data-eye", "1");
       b.setAttribute("aria-label", "See");
-      var lab = b.querySelector("span.absolute, span.uppercase");
       b.querySelectorAll("span").forEach(function (s) {
-        if ((s.textContent || "").trim().toUpperCase() === "SPEAKER") s.textContent = "See";
+        var x = (s.textContent || "").trim().toUpperCase();
+        if (x === "SPEAKER" || x === "SEE") s.textContent = "See";
       });
       var icon = b.querySelector("span.flex, span.rounded-full");
       if (icon) icon.innerHTML = eyeSvg();
-      b.addEventListener("click", function (e) {
+      var go = function (e) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         showHer();
-      }, true);
-      b.addEventListener("touchend", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        showHer();
-      }, true);
+      };
+      b.addEventListener("click", go, true);
+      b.addEventListener("touchend", go, true);
     });
   }
   function tick() {
@@ -105,5 +194,6 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   setInterval(tick, 800);
   tick();
 })();
+</script>
 </script>
 </body></html>
