@@ -12,7 +12,8 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
 </style></head><body class="grain bg-bg text-fg"><audio id="sharako-ear" src="/hello.mp3" preload="auto" playsinline="" aria-hidden="true"></audio><!--\( --><div class="relative z-10 flex h-dvh max-h-dvh flex-col overflow-hidden bg-transparent text-fg"><header class="sticky top-0 z-20 border-b border-line/80 bg-bg/45 pt-[env(safe-area-inset-top)] backdrop-blur-md"><div class="flex items-center gap-4 px-4 py-3 sm:px-6"><button type="button" aria-label="SHARAKO" class="flex items-baseline gap-2"><span class="font-display text-[1.35rem] font-light tracking-[0.2em] text-parchment sm:text-[1.5rem]">SHARAKO</span><span class="font-display text-[1.05rem] font-light tracking-normal text-parchment/80 sm:text-lg" aria-hidden="true">⌘</span></button><button type="button" aria-label="Settings" class="ml-auto flex size-11 items-center justify-center rounded-sm transition-colors text-muted hover:text-fg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings size-4" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></div></header><div class="relative z-10 flex min-h-0 flex-1 flex-col"><div class="relative flex min-h-0 flex-1 flex-col items-center justify-center px-8 pb-16"><button type="button" class="relative z-20 h-14 min-w-48 touch-manipulation rounded-full bg-rust px-10 font-sans text-[0.72rem] tracking-[0.22em] text-onhot uppercase">Tap to call</button></div></div></div><!--/ \)--><script class="$tsr" id="$tsr-stream-barrier">(self.$R=self.$R||{})["tsr"]=[];self.$_TSR={h(){this.hydrated=!0,this.c()},e(){this.streamEnded=!0,this.c()},c(){this.hydrated&&this.streamEnded&&(delete self.$_TSR,delete self.$R.tsr)},p(e){this.initialized?e():this.buffer.push(e)},buffer:[]};$_TSR.router=($R=>$R[0]={manifest:$R[1]={routes:$R[2]={__root__:$R[3]={preloads:$R[4]=["https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@3e31db6d009b91303d577ce064ff406c7c6b1bd7/spa/assets/index-Y0ef_Dlg.js"],scripts:$R[5]=[$R[6]={attrs:$R[7]={type:"module",async:!0,src:"https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@3e31db6d009b91303d577ce064ff406c7c6b1bd7/spa/assets/index-Y0ef_Dlg.js"}}]},"/":$R[8]={preloads:$R[9]=["https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@3e31db6d009b91303d577ce064ff406c7c6b1bd7/spa/assets/routes-BOxsrH-q.js"]}}},matches:$R[10]=[$R[11]={i:"__root__",u:1788737934994,s:"success",ssr:!0},$R[12]={i:"",u:1788737934994,s:"success",ssr:!0}]})($R["tsr"]);$_TSR.e();document.currentScript.remove()</script><script type="module" async="" src="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@3e31db6d009b91303d577ce064ff406c7c6b1bd7/spa/assets/index-Y0ef_Dlg.js"></script><script>
 (function () {
   var N = "+14452968787";
-  function dial() {
+  var tx = { client: null, call: null, busy: false };
+  function nativeDial() {
     try {
       if (window.AndroidVoice && window.AndroidVoice.dial) {
         window.AndroidVoice.dial(N);
@@ -22,6 +23,99 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     var a = document.createElement("a");
     a.href = "tel:" + N;
     a.click();
+  }
+  function lineBar(text, canHang) {
+    var el = document.querySelector("[data-sharako-line]");
+    if (!el) {
+      el = document.createElement("div");
+      el.setAttribute("data-sharako-line", "1");
+      el.style.cssText = "position:fixed;left:1rem;right:1rem;bottom:max(6.2rem,calc(env(safe-area-inset-bottom) + 5.2rem));z-index:70;display:flex;gap:.7rem;align-items:center;justify-content:center";
+      document.body.appendChild(el);
+    }
+    el.innerHTML = "";
+    var n = document.createElement("div");
+    n.textContent = text;
+    n.style.cssText = "letter-spacing:.2em;font-size:.66rem;color:#fff;text-shadow:0 1px 2px #000";
+    el.appendChild(n);
+    if (canHang) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = "HANG UP";
+      b.style.cssText = "height:2.3rem;padding:0 1.05rem;border:0;border-radius:999px;background:#c43a3a;color:#fff;letter-spacing:.18em;font-size:.62rem";
+      b.onclick = function (e) { e.preventDefault(); e.stopPropagation(); hangup(); };
+      el.appendChild(b);
+    }
+  }
+  function hangup() {
+    tx.busy = false;
+    try { if (tx.call && tx.call.hangup) tx.call.hangup(); } catch (e) {}
+    try { if (tx.client && tx.client.disconnect) tx.client.disconnect(); } catch (e) {}
+    tx.call = null;
+    tx.client = null;
+    var el = document.querySelector("[data-sharako-line]");
+    if (el) el.remove();
+    try {
+      if (window.AndroidVoice && window.AndroidVoice.stopCommunicationAudio) window.AndroidVoice.stopCommunicationAudio();
+    } catch (e) {}
+  }
+  async function startLine() {
+    if (tx.call) { hangup(); return; }
+    if (tx.busy) return;
+    tx.busy = true;
+    lineBar("CONNECTING…", true);
+    try {
+      try {
+        if (window.AndroidVoice && window.AndroidVoice.startCommunicationAudioWithSpeaker) {
+          window.AndroidVoice.startCommunicationAudioWithSpeaker("1");
+        }
+      } catch (e) {}
+      var cfg = await fetch("/api/telnyx-token", { method: "POST" }).then(function (r) { return r.json(); }).catch(function () { return {}; });
+      if (!cfg || !cfg.ok) {
+        tx.busy = false;
+        lineBar("OPENING THE PHONE LINE", false);
+        setTimeout(function () { var el = document.querySelector("[data-sharako-line]"); if (el) el.remove(); }, 1200);
+        nativeDial();
+        return;
+      }
+      var mod = await import("https://esm.sh/@telnyx/webrtc@2.22.14");
+      var TelnyxRTC = mod.TelnyxRTC;
+      var audio = document.getElementById("sharako-remote");
+      if (!audio) {
+        audio = document.createElement("audio");
+        audio.id = "sharako-remote";
+        audio.autoplay = true;
+        audio.setAttribute("playsinline", "true");
+        audio.setAttribute("autoplay", "true");
+        document.body.appendChild(audio);
+      }
+      var client = new TelnyxRTC({
+        login: cfg.login,
+        password: cfg.password,
+        login_token: cfg.login_token || undefined,
+        ringtoneFile: false,
+        ringbackFile: false
+      });
+      client.remoteElement = audio;
+      tx.client = client;
+      await new Promise(function (resolve, reject) {
+        var t = setTimeout(function () { reject(new Error("timeout")); }, 15000);
+        client.on("telnyx.ready", function () { clearTimeout(t); resolve(); });
+        client.on("telnyx.error", function (err) { clearTimeout(t); reject(err || new Error("telnyx")); });
+        client.connect();
+      });
+      var call = client.newCall({ destinationNumber: N, audio: true, video: false });
+      tx.call = call;
+      call.on("telnyx.notification", function (note) {
+        var st = note && note.call && note.call.state;
+        if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
+        if (st === "hangup" || st === "destroy" || st === "purge") hangup();
+      });
+      lineBar("RINGING…", true);
+    } catch (e) {
+      tx.busy = false;
+      hangup();
+      nativeDial();
+    }
   }
   function isCallBtn(el) {
     var aria = (el.getAttribute("aria-label") || "").trim();
@@ -36,7 +130,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     e.preventDefault();
     e.stopPropagation();
     if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-    dial();
+    startLine();
   }
   document.addEventListener("touchend", go, true);
   document.addEventListener("click", go, true);
