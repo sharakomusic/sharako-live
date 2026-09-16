@@ -7,34 +7,11 @@ export default async function handler(req, res) {
     return;
   }
 
-  const login = process.env.TELNYX_SIP_USER || process.env.TELNYX_LOGIN || "";
-  const password = process.env.TELNYX_SIP_PASSWORD || process.env.TELNYX_PASSWORD || "";
+  const login = process.env.TELNYX_SIP_USER || "usersharakomusic61680";
+  const password = process.env.TELNYX_SIP_PASSWORD || "5zfUSY3#TcvY";
   if (login && password) {
     res.status(200).json({ ok: true, login, password });
     return;
-  }
-
-  const key = process.env.TELNYX_API_KEY || "";
-  const connectionId = process.env.TELNYX_CONNECTION_ID || "";
-  if (key && connectionId) {
-    try {
-      const r = await fetch("https://api.telnyx.com/v2/telephony_credentials", {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + key,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ connection_id: connectionId })
-      });
-      const body = await r.json();
-      const d = body && body.data ? body.data : {};
-      const u = d.sip_username || d.user_name || "";
-      const p = d.sip_password || d.password || "";
-      if (u && p) {
-        res.status(200).json({ ok: true, login: u, password: p });
-        return;
-      }
-    } catch (_) {}
   }
 
   res.status(200).json({ ok: false });
