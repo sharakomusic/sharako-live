@@ -8,38 +8,37 @@
 <meta name="theme-color" content="#E6EFE4"/>
 <meta name="color-scheme" content="light"/>
 <script>window.__SHARAKO_SESSION_URL="https://openai-realtime-test.onrender.com/session";</script>
-<script>try{localStorage.setItem("sharako.museShellVer","1039-static");localStorage.setItem("sharako.uiMode","light")}catch(e){}</script>
+<script>try{localStorage.setItem("sharako.museShellVer","1040-webrtc");localStorage.setItem("sharako.uiMode","light")}catch(e){}</script>
 <style>
-  html,body{margin:0;height:100%;background:
-    radial-gradient(120% 80% at 50% -10%, #F7F4D8 0%, transparent 55%),
-    radial-gradient(90% 60% at 100% 100%, #D7E4F5 0%, transparent 50%),
-    linear-gradient(180deg,#EAF3E7 0%,#E6EFE4 45%,#E3EBE8 100%);
-    color:#1E2B24;font-family:Jost,"Avenir Next","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% -10%, #F7F4D8 0%, transparent 55%),radial-gradient(90% 60% at 100% 100%, #D7E4F5 0%, transparent 50%),linear-gradient(180deg,#EAF3E7 0%,#E6EFE4 45%,#E3EBE8 100%);color:#1E2B24;font-family:Jost,"Avenir Next","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
   body{display:flex;flex-direction:column;min-height:100dvh;overflow:hidden}
   header{padding:calc(env(safe-area-inset-top) + 14px) 20px 8px;font-weight:600;letter-spacing:.16em;font-size:1.15rem}
   header span{font-weight:300;letter-spacing:0;opacity:.55;margin-left:6px}
   main{flex:1;display:flex;flex-direction:column;padding:8px 20px calc(env(safe-area-inset-bottom) + 24px);max-width:28rem;width:100%;margin:0 auto;box-sizing:border-box}
-  .card{background:#FFFCF2;border-radius:22px;padding:28px 22px;text-align:center;
-    box-shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px rgba(94,143,110,.08)}
+  .card{background:#FFFCF2;border-radius:22px;padding:28px 22px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px rgba(94,143,110,.08)}
   .label{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:#6F8176;margin:0}
   .phone{margin:10px 0 0;font-size:1.55rem;font-weight:600;letter-spacing:-.02em;display:flex;gap:8px;justify-content:center;align-items:center}
   .star{color:#5E8F6E}
   .sub{margin:10px 0 0;font-size:.9rem;color:#6F8176;line-height:1.35}
-  button.call{margin-top:22px;width:100%;height:56px;border:0;border-radius:999px;background:#5E8F6E;color:#fff;
-    font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
-  button.call:disabled{opacity:.6}
+  button.call{margin-top:22px;width:100%;height:56px;border:0;border-radius:999px;background:#5E8F6E;color:#fff;font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+  button.call:disabled{opacity:.6;cursor:default}
   .quick{margin-top:22px;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:#6F8176}
-  .row{margin-top:10px;background:#FFFCF2;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;
-    box-shadow:0 0 0 1px rgba(30,43,36,.06);font-size:.95rem;font-weight:600}
+  .row{margin-top:10px;background:#FFFCF2;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 0 0 1px rgba(30,43,36,.06);font-size:.95rem;font-weight:600;text-decoration:none;color:inherit;cursor:pointer}
   .row small{display:block;font-weight:400;color:#6F8176;margin-top:2px}
   #err{display:none;margin-top:12px;color:#D94B4B;font-size:.85rem}
-  /* Hide React mount until we decide — static UI is the product for idle */
-  #root{display:none!important}
+  /* In-call overlay — home stays in DOM, not wiped */
+  #call-ui{display:none;position:fixed;inset:0;z-index:40;background:radial-gradient(120% 80% at 50% -10%, #F7F4D8 0%, transparent 55%),linear-gradient(180deg,#EAF3E7 0%,#E6EFE4 55%,#E3EBE8 100%);flex-direction:column;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
+  #call-ui.on{display:flex}
+  #call-ui .pulse{width:88px;height:88px;border-radius:50%;background:#5E8F6E;display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;box-shadow:0 0 0 12px rgba(94,143,110,.18)}
+  #call-ui .status{margin-top:28px;font-size:1.1rem;font-weight:600;letter-spacing:.04em}
+  #call-ui .hint{margin-top:8px;font-size:.9rem;color:#6F8176;text-align:center;max-width:16rem;line-height:1.35}
+  #call-ui .hang{margin-top:40px;width:min(100%,16rem);height:56px;border:0;border-radius:999px;background:#C45B5B;color:#fff;font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
+  #toast{display:none;position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#1E2B24;color:#FFFCF2;padding:10px 16px;border-radius:999px;font-size:.85rem;z-index:50;max-width:90%}
 </style>
 </head>
 <body>
   <header>SHARAKO<span>⌘</span></header>
-  <main>
+  <main id="home">
     <div class="card">
       <p class="label">Your line</p>
       <p class="phone"><span class="star">★</span>+1 (445) 296-8787</p>
@@ -48,39 +47,18 @@
       <p id="err"></p>
     </div>
     <p class="quick">Quick</p>
-    <div class="row">Call me<small>Reminders · ringer · every day</small></div>
-    <div class="row" style="margin-top:8px">Settings<small>Account, appearance, help</small></div>
+    <a class="row" id="row-callme" href="#call-me">Call me<small>Reminders · ringer · every day</small></a>
+    <a class="row" id="row-settings" href="#settings" style="margin-top:8px">Settings<small>Account, appearance, help</small></a>
   </main>
-  <script>
-  // Minimal in-app Tap to call: fetch /session and use WebRTC if possible.
-  // Falls back to loading the CDN app scripts for full voice if the tiny path fails.
-  const SESSION = window.__SHARAKO_SESSION_URL;
-  const tap = document.getElementById('tap');
-  const err = document.getElementById('err');
-  function showErr(m){ err.style.display='block'; err.textContent=m; }
-  tap.addEventListener('click', async () => {
-    tap.disabled = true;
-    tap.textContent = 'Connecting…';
-    try {
-      const r = await fetch(SESSION, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
-      if (!r.ok) throw new Error('session '+r.status);
-      const data = await r.json();
-      // Prefer full CDN voice UI for the live call chrome
-      document.querySelector('main').style.display='none';
-      document.querySelector('header').textContent='SHARAKO';
-      document.getElementById('root').style.display='block';
-      // Load CDN app which owns Realtime — static shell hands off
-      await loadScript('https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@60941265eafb0466f99be5698875b5212466a3bc/spa/assets/index-BDfx164j.js');
-      tap.disabled=false; tap.textContent='Tap to call';
-    } catch (e) {
-      console.error(e);
-      showErr('Could not start call. Check connection and try again.');
-      tap.disabled=false; tap.textContent='Tap to call';
-    }
-  });
-  function loadScript(src){
-    return new Promise((res,rej)=>{ const s=document.createElement('script'); s.type='module'; s.src=src; s.onload=res; s.onerror=rej; document.body.appendChild(s); });
-  }
-  </script>
+
+  <div id="call-ui" aria-live="polite">
+    <div class="pulse" aria-hidden="true">★</div>
+    <p class="status" id="call-status">Connecting…</p>
+    <p class="hint" id="call-hint">Allow the microphone if prompted.</p>
+    <button class="hang" id="hang" type="button">Hang up</button>
+  </div>
+  <div id="toast"></div>
+
+  <script src="/call-webrtc.js?v=static3"></script>
 </body>
 </html>
