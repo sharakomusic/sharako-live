@@ -112,8 +112,7 @@
     var back = el("button", "lf-back", "Back");
     back.type = "button";
     back.onclick = function () {
-      if (title === "the house") closeLife();
-      else openHub();
+      closeLife();
     };
     var body = el("div", "lf-body");
     body.appendChild(el("h2", "lf-title", title));
@@ -140,44 +139,11 @@
   }
 
   function openHub() {
-    shell("the house", function (body) {
-      [
-        { id: "marks", label: "Marks", hint: "what you're keeping" },
-        { id: "sight", label: "Sight", hint: "what she saw" },
-        { id: "links", label: "Links", hint: "what she can reach" },
-        { id: "purse", label: "Purse", hint: "Stripe" },
-        { id: "word", label: "Word", hint: "when she asks" },
-        { id: "channels", label: "Channels", hint: "other ways in" },
-        { id: "lock", label: "Lock", hint: "pin the house" },
-        { id: "house", label: "House", hint: "wallpaper, voice, rings" },
-      ].forEach(function (row) {
-        var b = el("button", "lf-row");
-        b.type = "button";
-        var left = el("span", "");
-        left.appendChild(el("span", "lf-kicker", row.label));
-        left.appendChild(el("span", "lf-hint", row.hint));
-        b.append(left, el("span", "lf-open", "Open"));
-        b.onclick = function () {
-          if (row.id === "house") openOriginalSettings();
-          else openView(row.id);
-        };
-        body.appendChild(b);
-      });
-    });
+    // unused — Settings stays the original screen
   }
 
   function openOriginalSettings() {
-    window.__sharakoHousePass = 1;
     closeLife();
-    window.setTimeout(function () {
-      var b = Array.prototype.find.call(document.querySelectorAll("button"), function (x) {
-        return (x.getAttribute("aria-label") || "").trim() === "Settings";
-      });
-      if (b) b.click();
-      window.setTimeout(function () {
-        window.__sharakoHousePass = 0;
-      }, 400);
-    }, 40);
   }
 
   function openView(id) {
@@ -626,19 +592,91 @@
     document.body.appendChild(wrap);
   }
 
+  function findSettingsScroll() {
+    var marin = Array.prototype.find.call(document.querySelectorAll("button"), function (x) {
+      return ((x.textContent || "").replace(/\s+/g, " ").trim() === "Marin");
+    });
+    if (!marin) return null;
+    var n = marin.parentElement;
+    var best = null;
+    while (n && n !== document.body) {
+      var st = window.getComputedStyle(n);
+      var cls = n.className || "";
+      if (
+        st.overflowY === "auto" ||
+        st.overflowY === "scroll" ||
+        /overflow-y-auto|overflow-auto|overflow-y-scroll/.test(cls)
+      ) {
+        best = n;
+      }
+      n = n.parentElement;
+    }
+    if (best) return best;
+    n = marin.parentElement;
+    while (n && n !== document.body) {
+      var st2 = window.getComputedStyle(n);
+      if (st2.position === "absolute" || st2.position === "fixed") return n;
+      n = n.parentElement;
+    }
+    return marin.parentElement;
+  }
+
+  function injectHouseRows() {
+    if (document.querySelector("[data-sharako-life]")) return false;
+    if (document.querySelector("[data-sharako-house-rows]")) return true;
+    var body = findSettingsScroll();
+    if (!body) return false;
+    var box = el("div", "");
+    box.setAttribute("data-sharako-house-rows", "1");
+    box.style.cssText = "margin:32px 0 64px;padding-top:4px;border-top:1px solid rgba(245,245,243,.14)";
+    var kicker = el("p", "");
+    kicker.textContent = "House";
+    kicker.style.cssText =
+      "margin:16px 0 8px;letter-spacing:.16em;font-size:.5rem;text-transform:uppercase;color:#8a8a84";
+    box.appendChild(kicker);
+    [
+      { id: "marks", label: "Marks", hint: "what you're keeping" },
+      { id: "sight", label: "Sight", hint: "what she saw" },
+      { id: "links", label: "Links", hint: "what she can reach" },
+      { id: "purse", label: "Purse", hint: "Stripe" },
+      { id: "word", label: "Word", hint: "when she asks" },
+      { id: "channels", label: "Channels", hint: "other ways in" },
+      { id: "lock", label: "Lock", hint: "pin the house" },
+    ].forEach(function (row) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.style.cssText =
+        "display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:14px 0;border:0;border-bottom:1px solid rgba(245,245,243,.14);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer";
+      var left = document.createElement("span");
+      var lab = document.createElement("span");
+      lab.textContent = row.label;
+      lab.style.cssText =
+        "display:block;letter-spacing:.14em;font-size:.58rem;text-transform:uppercase;color:#f5f5f3";
+      var hint = document.createElement("span");
+      hint.textContent = row.hint;
+      hint.style.cssText = "display:block;margin-top:4px;font-size:.78rem;color:#8a8a84";
+      left.append(lab, hint);
+      var open = document.createElement("span");
+      open.textContent = "Open";
+      open.style.cssText = "letter-spacing:.16em;font-size:.5rem;text-transform:uppercase;color:#8a8a84;flex-shrink:0";
+      b.append(left, open);
+      b.onclick = function (ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        openView(row.id);
+      };
+      box.appendChild(b);
+    });
+    body.appendChild(box);
+    return true;
+  }
+
   document.addEventListener(
     "click",
     function (e) {
       var t = e.target && e.target.closest ? e.target.closest("button") : null;
       if (!t) return;
       var label = (t.getAttribute("aria-label") || "").trim();
-      if (label === "Settings" && !window.__sharakoHousePass) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        openHub();
-        return;
-      }
       if (label === "Snap") {
         var v = document.querySelector("video");
         if (v && v.videoWidth) {
@@ -655,9 +693,9 @@
     true
   );
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", lockGate);
-  } else {
-    lockGate();
-  }
+  var obs = new MutationObserver(function () {
+    injectHouseRows();
+  });
+  obs.observe(document.documentElement, { childList: true, subtree: true });
+  injectHouseRows();
 })();
