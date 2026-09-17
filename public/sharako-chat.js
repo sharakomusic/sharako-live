@@ -102,12 +102,11 @@
     back.type = "button";
     back.setAttribute("aria-label", "Close");
     back.onclick = close;
-    var mark = el("span", "sk-mark", "SHARAKO");
     var callBtn = el("button", "sk-call", "Call");
     callBtn.type = "button";
     callBtn.setAttribute("aria-label", "Call");
     callBtn.onclick = jumpCall;
-    head.append(back, mark, callBtn);
+    head.append(back, callBtn);
 
     var list = el("div", "sk-list");
     list.appendChild(
