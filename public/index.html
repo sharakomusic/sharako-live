@@ -39,6 +39,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     if (tx.dead) return;
     tx.dead = true;
     tx.busy = false;
+    window.__sharakoOnLine = false;
     var call = tx.call, client = tx.client;
     tx.call = null;
     tx.client = null;
@@ -112,10 +113,11 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         var st = call && call.state;
         if (type === "userMediaError") { lineBar("ALLOW MIC", true); return; }
         if (st === "trying" || st === "requesting" || st === "connecting" || st === "ringing") lineBar("RINGING…", true);
-        if (st === "active" || st === "answered") lineBar("ON THE LINE", true);
+        if (st === "active" || st === "answered") { tx.live = true; window.__sharakoOnLine = true; lineBar("ON THE LINE", true); }
         if (st === "hangup" || st === "destroy" || st === "purge") {
+          if (tx.live) { hangup(); return; }
           tx.busy = false;
-          lineBar("LINE FAILED: not connected — attach SHARAKO to the outbound profile", true);
+          lineBar("LINE FAILED: not connected", true);
           return;
         }
         if (note && note.error) lineBar("LINE ERROR " + errText(note.error), true);
@@ -127,8 +129,19 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
         client.connect();
       });
       lineBar("CALLING HER…", true);
-      var call = client.newCall({ destinationNumber: N, callerNumber: N, audio: true, video: false });
+      var media = window.__sharakoMedia;
+      if (!media) {
+        try {
+          media = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: "environment" } });
+        } catch (e1) {
+          media = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        }
+        window.__sharakoMedia = media;
+      }
+      var audioOnly = new MediaStream(media.getAudioTracks());
+      var call = client.newCall({ destinationNumber: N, callerNumber: N, audio: true, video: false, localStream: audioOnly });
       tx.call = call;
+      tx.live = false;
       try { audio.play(); } catch (e) {}
     } catch (e) {
       tx.busy = false;
@@ -263,19 +276,117 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     document.body.appendChild(fileInp);
     return fileInp;
   }
-  function showHer() {
-    if (busy) return;
-    busy = true;
-    try {
-      var inp = ensureFileInp();
-      if (inp.click) inp.click();
-    } catch (e) {
-      busy = false;
-    }
-    setTimeout(function () {
-      if (busy && !document.querySelector("[data-sharako-cam]")) busy = false;
-    }, 4000);
+  function stopCamTracks(keepAudio) {
+    var media = window.__sharakoMedia;
+    if (!media) return;
+    media.getTracks().forEach(function (tr) {
+      if (keepAudio && tr.kind === "audio") return;
+      if (tr.kind === "video") { try { tr.stop(); } catch (e) {} }
+    });
   }
+  function snapFrom(vid) {
+    var w = vid.videoWidth || vid.clientWidth || 0;
+    var h = vid.videoHeight || vid.clientHeight || 0;
+    if (!w || !h) return "";
+    var c = document.createElement("canvas");
+    c.width = w;
+    c.height = h;
+    c.getContext("2d").drawImage(vid, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.72);
+  }
+  function openLiveCam() {
+    var old = document.querySelector("[data-sharako-cam]");
+    if (old) old.remove();
+    var wrap = document.createElement("div");
+    wrap.setAttribute("data-sharako-cam", "1");
+    wrap.style.cssText = "position:fixed;inset:0;z-index:75;background:#000";
+    var vid = document.createElement("video");
+    vid.setAttribute("playsinline", "true");
+    vid.setAttribute("autoplay", "true");
+    vid.muted = true;
+    vid.playsInline = true;
+    vid.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover";
+    var note = document.createElement("div");
+    note.textContent = document.querySelector("[data-sharako-line]") ? "ON THE LINE — SHOW HER" : "SHOW HER";
+    note.style.cssText = "position:absolute;top:max(1rem,env(safe-area-inset-top));left:0;right:0;text-align:center;letter-spacing:.22em;font-size:.7rem;color:#fff;text-shadow:0 1px 2px #000";
+    var snapBtn = document.createElement("button");
+    snapBtn.type = "button";
+    snapBtn.textContent = "SNAP";
+    snapBtn.style.cssText = "position:absolute;left:50%;bottom:max(5.2rem,calc(env(safe-area-inset-bottom) + 4.2rem));transform:translateX(-50%);width:4.6rem;height:4.6rem;border:3px solid #fff;border-radius:999px;background:rgba(255,255,255,.2);color:#fff;letter-spacing:.18em;font-size:.62rem";
+    var closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.textContent = "CLOSE";
+    closeBtn.style.cssText = "position:absolute;left:1.25rem;right:1.25rem;bottom:max(1.1rem,env(safe-area-inset-bottom));height:3rem;border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.22em;font-size:.68rem";
+    function attach(stream) {
+      window.__sharakoMedia = stream;
+      vid.srcObject = stream;
+      try { vid.play(); } catch (e) {}
+    }
+    function boot() {
+      var existing = window.__sharakoMedia;
+      if (existing && existing.getVideoTracks().some(function (tr) { return tr.readyState === "live"; })) {
+        attach(existing);
+        return;
+      }
+      var opts = { video: { facingMode: "environment" }, audio: false };
+      navigator.mediaDevices.getUserMedia(opts).then(function (vs) {
+        if (existing) {
+          vs.getVideoTracks().forEach(function (tr) { existing.addTrack(tr); });
+          attach(existing);
+        } else attach(vs);
+      }).catch(function () {
+        navigator.mediaDevices.getUserMedia({ video: true, audio: false }).then(function (vs) {
+          attach(vs);
+        }).catch(function () {
+          note.textContent = "CAMERA BLOCKED";
+        });
+      });
+    }
+    snapBtn.onclick = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var pic = snapFrom(vid);
+      if (!pic) {
+        note.textContent = "HOLD ON…";
+        setTimeout(function () {
+          pic = snapFrom(vid);
+          if (!pic) { note.textContent = "NO FRAME"; return; }
+          finish(pic);
+        }, 250);
+        return;
+      }
+      finish(pic);
+    };
+    function finish(pic) {
+      try { sendSight(pic); } catch (e) {}
+      try { fetch("/api/sight", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: pic }) }); } catch (e) {}
+      note.textContent = "GOT IT — STILL ON THE LINE";
+      var img = document.createElement("img");
+      img.src = pic;
+      img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000";
+      wrap.appendChild(img);
+      setTimeout(function () { try { img.remove(); } catch (e) {} }, 1200);
+    }
+    closeBtn.onclick = function (e) {
+      e.preventDefault();
+      wrap.remove();
+      busy = false;
+      var onLine = !!(window.__sharakoOnLine);
+      if (!onLine) {
+        try {
+          if (vid.srcObject) vid.srcObject.getVideoTracks().forEach(function (tr) { tr.stop(); });
+        } catch (err) {}
+      }
+    };
+    wrap.append(vid, note, snapBtn, closeBtn);
+    document.body.appendChild(wrap);
+    boot();
+    busy = false;
+  }
+  function showHer() {
+    openLiveCam();
+  }
+  window.__sharakoOpenCam = openLiveCam;
   function restyleSpeaker() {
     document.querySelectorAll("button").forEach(function (b) {
       var aria = (b.getAttribute("aria-label") || "").trim();
@@ -299,7 +410,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
   }
     var _play = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function () {
-    if (this.id === "sharako-remote") return _play.apply(this, arguments);
+    if (this.id === "sharako-remote" || (this.tagName && this.tagName.toLowerCase() === "video")) return _play.apply(this, arguments);
     var src = this.currentSrc || this.src || "";
     if (/hello\.mp3|serenade|elise|callme|ringtone/i.test(src)) {
       try { this.pause(); this.muted = true; } catch (e) {}
