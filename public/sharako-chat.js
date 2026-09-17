@@ -28,26 +28,6 @@
     return n;
   }
 
-  function svg(html) {
-    var s = document.createElement("span");
-    s.className = "sk-ico";
-    s.innerHTML = html;
-    return s;
-  }
-
-  var PHONE =
-    '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8.2 3.8c.5-.5 1.3-.6 1.9-.2l1.7 1.1c.6.4.8 1.2.5 1.9l-.7 1.7c-.2.4-.1.9.2 1.2l3.7 3.7c.3.3.8.4 1.2.2l1.7-.7c.7-.3 1.5-.1 1.9.5l1.1 1.7c.4.6.3 1.4-.2 1.9l-1.1 1.1c-.6.6-1.4.9-2.2.8-2.1-.3-5.1-1.7-8-4.6-2.9-2.9-4.3-5.9-4.6-8-.1-.8.2-1.6.8-2.2l1.1-1.1Z"/></svg>';
-  var MENU =
-    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
-  var PLUS =
-    '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-  var MIC =
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>';
-  var SEND =
-    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  var CHAT =
-    '<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 4.8A2.8 2.8 0 0 1 7.8 2h8.4A2.8 2.8 0 0 1 19 4.8v7.4A2.8 2.8 0 0 1 16.2 15H11l-4.4 3.4c-.7.5-1.6 0-1.6-.9V4.8Z"/></svg>';
-
   function jumpCall() {
     close();
     window.setTimeout(function () {
@@ -69,25 +49,12 @@
 
   function bubble(text, mine) {
     var row = el("div", mine ? "sk-row sk-mine" : "sk-row");
-    var b = el("div", mine ? "sk-bubble sk-me" : "sk-bubble", text);
-    row.appendChild(b);
-    return row;
-  }
-
-  function callCard() {
-    var row = el("div", "sk-row");
-    var b = el("div", "sk-bubble");
-    b.appendChild(el("p", "", "Want me on the line? You can always call from here."));
-    var action = el("button", "sk-callnow");
-    action.type = "button";
-    action.setAttribute("aria-label", "Call now");
-    action.appendChild(el("span", "", "Call now"));
-    var go = el("span", "sk-callgo");
-    go.innerHTML = PHONE;
-    action.appendChild(go);
-    action.onclick = jumpCall;
-    b.appendChild(action);
-    row.appendChild(b);
+    if (mine) {
+      var b = el("div", "sk-me", text);
+      row.appendChild(b);
+    } else {
+      row.appendChild(el("p", "sk-her", text));
+    }
     return row;
   }
 
@@ -96,37 +63,29 @@
     var s = document.createElement("style");
     s.id = "sk-chat-css";
     s.textContent =
-      "[data-sharako-chat]{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:#faf9f7;color:#1c1b19;font-family:Jost,Avenir Next,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased}" +
+      "[data-sharako-chat]{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:rgba(11,11,11,.82);color:#f5f5f3;font-family:Jost,Avenir Next,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}" +
       "[data-sharako-chat] *{box-sizing:border-box}" +
-      "[data-sharako-chat] button{cursor:pointer;font:inherit;color:inherit}" +
-      ".sk-head{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 16px 6px 16px}" +
-      ".sk-round{width:44px;height:44px;border:1px solid rgba(28,27,25,.1);border-radius:999px;background:#fff;display:flex;align-items:center;justify-content:center;padding:0}" +
-      ".sk-callpill{height:44px;padding:0 16px;border:1px solid rgba(28,27,25,.1);border-radius:999px;background:#fff;display:flex;align-items:center;gap:8px;font-size:14px}" +
-      ".sk-ident{display:flex;flex-direction:column;align-items:center;padding:2px 16px 12px}" +
-      ".sk-ident img{width:92px;height:92px;border-radius:999px;object-fit:cover;background:#eceae6;display:block}" +
-      ".sk-name{margin-top:-10px;padding:3px 12px;border-radius:999px;background:#fff;font-size:13px;letter-spacing:.02em;box-shadow:0 1px 0 rgba(28,27,25,.06)}" +
-      ".sk-time{margin-top:6px;font-size:12px;color:#8a8680}" +
-      ".sk-list{flex:1;min-height:0;overflow:auto;padding:0 16px 8px;display:flex;flex-direction:column;gap:10px;-webkit-overflow-scrolling:touch}" +
+      "[data-sharako-chat] button{cursor:pointer;font:inherit;color:inherit;background:none;border:0}" +
+      ".sk-head{display:flex;align-items:center;gap:12px;padding:max(12px,env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid rgba(245,245,243,.14)}" +
+      ".sk-close{height:44px;padding:0 4px;letter-spacing:.22em;font-size:.72rem;text-transform:uppercase;color:#8a8a84}" +
+      ".sk-mark{font-family:Cormorant Garamond,Iowan Old Style,Georgia,serif;font-weight:300;letter-spacing:.2em;font-size:1.15rem;color:#f5f5f3}" +
+      ".sk-call{margin-left:auto;height:44px;min-width:96px;padding:0 20px;border-radius:999px;background:#f5f5f3;color:#0b0b0b;letter-spacing:.2em;font-size:.62rem;text-transform:uppercase}" +
+      ".sk-list{flex:1;min-height:0;overflow:auto;padding:32px 20px 12px;display:flex;flex-direction:column;gap:22px;-webkit-overflow-scrolling:touch}" +
+      ".sk-time{letter-spacing:.18em;font-size:.68rem;text-transform:uppercase;color:#8a8a84}" +
+      ".sk-hello{max-width:20rem;font-family:Cormorant Garamond,Iowan Old Style,Georgia,serif;font-weight:300;font-size:1.45rem;line-height:1.25;letter-spacing:.04em;color:#f5f5f3;white-space:pre-wrap}" +
       ".sk-row{display:flex;justify-content:flex-start;flex-shrink:0}" +
       ".sk-mine{justify-content:flex-end}" +
-      ".sk-bubble{max-width:92%;padding:14px 16px;border-radius:18px;background:#ebe9e5;color:#1c1b19;font-size:15.5px;line-height:1.5;white-space:pre-wrap}" +
-      ".sk-me{background:#1c1b19;color:#faf9f7;border-radius:18px 18px 6px 18px}" +
-      ".sk-bubble p{margin:0}" +
-      ".sk-callnow{margin-top:12px;width:100%;min-height:48px;display:flex;align-items:center;justify-content:space-between;padding:6px 6px 6px 16px;border:1.5px dashed rgba(28,27,25,.16);border-radius:999px;background:#fff;font-size:15px;color:#1c1b19}" +
-      ".sk-callgo{width:36px;height:36px;border-radius:999px;background:#1c1b19;color:#faf9f7;display:flex;align-items:center;justify-content:center;flex-shrink:0}" +
-      ".sk-think{padding:4px 6px;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#8a8680}" +
-      ".sk-form{padding:8px 12px 4px;display:flex;align-items:flex-end;gap:6px}" +
-      ".sk-plus{width:44px;height:44px;border:0;background:transparent;display:flex;align-items:center;justify-content:center;padding:0;color:#1c1b19;flex-shrink:0}" +
-      ".sk-field{flex:1;min-height:48px;display:flex;align-items:flex-end;border:1.5px dashed rgba(28,27,25,.14);border-radius:999px;background:#fff;padding:4px 6px 4px 16px}" +
-      ".sk-field textarea{flex:1;resize:none;border:0;outline:none;background:transparent;font:16px/1.35 Jost,Avenir Next,system-ui,sans-serif;padding:10px 0;max-height:96px;color:#1c1b19}" +
-      ".sk-field textarea::placeholder{color:#b0aba4}" +
-      ".sk-mic{width:36px;height:36px;border:0;border-radius:999px;background:transparent;margin:4px 2px;display:flex;align-items:center;justify-content:center;padding:0;color:#1c1b19;flex-shrink:0}" +
-      ".sk-send{width:36px;height:36px;border:0;border-radius:999px;background:#1c1b19;color:#faf9f7;margin:4px 2px;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}" +
+      ".sk-her{max-width:90%;margin:0;font-size:1.02rem;line-height:1.55;color:rgba(245,245,243,.92);white-space:pre-wrap}" +
+      ".sk-me{max-width:86%;padding:10px 20px;border-radius:999px;background:#f5f5f3;color:#0b0b0b;font-size:.92rem;line-height:1.35;white-space:pre-wrap}" +
+      ".sk-think{letter-spacing:.22em;font-size:.62rem;text-transform:uppercase;color:#8a8a84}" +
+      ".sk-form{padding:12px 16px max(16px,env(safe-area-inset-bottom));display:flex;align-items:flex-end;gap:8px;border-top:1px solid rgba(245,245,243,.14)}" +
+      ".sk-photo{height:44px;padding:0 4px;letter-spacing:.18em;font-size:.58rem;text-transform:uppercase;color:#8a8a84;flex-shrink:0}" +
+      ".sk-field{flex:1;min-height:48px;display:flex;align-items:flex-end;border-radius:999px;background:#1a1a1a;padding:4px 8px 4px 18px;box-shadow:0 0 0 1px rgba(245,245,243,.14)}" +
+      ".sk-field textarea{flex:1;resize:none;border:0;outline:none;background:transparent;font:16px/1.35 Jost,Avenir Next,system-ui,sans-serif;padding:10px 0;max-height:96px;color:#f5f5f3}" +
+      ".sk-field textarea::placeholder{color:#6a6a66}" +
+      ".sk-send{width:36px;height:36px;border:0;border-radius:999px;background:#f5f5f3;color:#0b0b0b;margin:4px 2px;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0}" +
       ".sk-send:disabled{opacity:.35}" +
-      ".sk-tabs{display:flex;justify-content:space-around;align-items:center;padding:8px 48px max(12px,env(safe-area-inset-bottom))}" +
-      ".sk-tab{border:0;background:transparent;width:48px;height:44px;display:flex;align-items:center;justify-content:center;color:#c4bfb8;padding:0}" +
-      ".sk-tab.on{color:#1c1b19}" +
-      ".sk-ico{display:flex;align-items:center;justify-content:center}";
+      ".sk-ghost{height:36px;margin:4px 6px;letter-spacing:.16em;font-size:.58rem;text-transform:uppercase;color:#8a8a84;flex-shrink:0}";
     document.head.appendChild(s);
   }
 
@@ -136,49 +95,29 @@
     var wrap = el("div", "");
     wrap.setAttribute("data-sharako-chat", "1");
     wrap.setAttribute("role", "dialog");
-    wrap.setAttribute("aria-label", "Text chat");
+    wrap.setAttribute("aria-label", "Text");
 
     var head = el("div", "sk-head");
-    var menu = el("button", "sk-round");
-    menu.type = "button";
-    menu.setAttribute("aria-label", "Back");
-    menu.appendChild(svg(MENU));
-    menu.onclick = close;
-    var callBtn = el("button", "sk-callpill");
+    var back = el("button", "sk-close", "Close");
+    back.type = "button";
+    back.setAttribute("aria-label", "Close");
+    back.onclick = close;
+    var mark = el("span", "sk-mark", "SHARAKO");
+    var callBtn = el("button", "sk-call", "Call");
     callBtn.type = "button";
     callBtn.setAttribute("aria-label", "Call");
-    callBtn.appendChild(svg(PHONE));
-    callBtn.appendChild(document.createTextNode("Call"));
     callBtn.onclick = jumpCall;
-    head.append(menu, callBtn);
+    head.append(back, mark, callBtn);
 
-    var ident = el("div", "sk-ident");
-    var img = document.createElement("img");
-    img.src = "/sharako-avatar.jpg?v=3";
-    img.alt = "";
-    img.width = 92;
-    img.height = 92;
-    ident.appendChild(img);
-    ident.appendChild(el("div", "sk-name", "SHARAKO"));
-    ident.appendChild(
+    var list = el("div", "sk-list");
+    list.appendChild(
       el(
-        "div",
+        "p",
         "sk-time",
         new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
       )
     );
-
-    var list = el("div", "sk-list");
-    list.appendChild(
-      bubble("Hey — I’m SHARAKO, your quiet companion.\nText here whenever. Call when you want my voice.", false)
-    );
-    list.appendChild(
-      bubble(
-        "A bit about how I work:\n\n• Call is the real phone line. Stay in the app.\n• See is during the call — snap as many as you want while we’re talking.\n• The more we talk, the more I’ll remember.",
-        false
-      )
-    );
-    list.appendChild(callCard());
+    list.appendChild(el("p", "sk-hello", "hey…\nwrite if you want. i'm here."));
     history.forEach(function (m) {
       list.appendChild(bubble(m.text, m.role === "user"));
     });
@@ -188,25 +127,23 @@
     file.type = "file";
     file.accept = "image/*";
     file.hidden = true;
-    var plus = el("button", "sk-plus");
+    var plus = el("button", "sk-photo", "Photo");
     plus.type = "button";
-    plus.setAttribute("aria-label", "Attach");
-    plus.appendChild(svg(PLUS));
+    plus.setAttribute("aria-label", "Photo");
     plus.onclick = function () {
       file.click();
     };
     file.onchange = function () {
       file.value = "";
-      send("I’m sending you a photo from here.");
+      send("I'm sending you a photo from here. Look with me.");
     };
     var field = el("div", "sk-field");
     var input = document.createElement("textarea");
     input.rows = 1;
-    input.placeholder = "Message";
-    var action = el("button", "sk-mic");
+    input.placeholder = "write";
+    var action = el("button", "sk-ghost", "Call");
     action.type = "button";
     action.setAttribute("aria-label", "Call");
-    action.appendChild(svg(MIC));
     action.onclick = function (e) {
       e.preventDefault();
       if (input.value.trim()) send();
@@ -217,9 +154,12 @@
 
     function syncAction() {
       var has = !!input.value.trim();
-      action.className = has ? "sk-send" : "sk-mic";
+      action.className = has ? "sk-send" : "sk-ghost";
       action.setAttribute("aria-label", has ? "Send" : "Call");
-      action.innerHTML = has ? SEND : MIC;
+      action.textContent = has ? "" : "Call";
+      action.innerHTML = has
+        ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h12M13 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        : "Call";
       action.type = has ? "submit" : "button";
     }
     input.addEventListener("input", function () {
@@ -249,7 +189,7 @@
       history.push({ role: "user", text: text });
       save();
       list.appendChild(bubble(text, true));
-      think = el("div", "sk-think", "Thinking");
+      think = el("div", "sk-think", "…");
       list.appendChild(think);
       list.scrollTop = list.scrollHeight;
       busy = true;
@@ -279,18 +219,7 @@
         });
     }
 
-    var tabs = el("nav", "sk-tabs");
-    tabs.setAttribute("aria-label", "Chat shortcuts");
-    var chatTab = el("span", "sk-tab on");
-    chatTab.appendChild(svg(CHAT));
-    var callTab = el("button", "sk-tab");
-    callTab.type = "button";
-    callTab.setAttribute("aria-label", "Call");
-    callTab.appendChild(svg(PHONE));
-    callTab.onclick = jumpCall;
-    tabs.append(chatTab, callTab);
-
-    wrap.append(head, ident, list, form, tabs);
+    wrap.append(head, list, form);
     document.body.appendChild(wrap);
     list.scrollTop = list.scrollHeight;
     window.setTimeout(function () {
