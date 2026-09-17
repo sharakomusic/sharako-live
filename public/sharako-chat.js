@@ -63,7 +63,7 @@
     var s = document.createElement("style");
     s.id = "sk-chat-css";
     s.textContent =
-      "[data-sharako-chat]{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:rgba(11,11,11,.82);color:#f5f5f3;font-family:Jost,Avenir Next,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}" +
+      "[data-sharako-chat]{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;background:rgba(11,11,11,.92);color:#f5f5f3;font-family:Jost,Avenir Next,Segoe UI,sans-serif;-webkit-font-smoothing:antialiased;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}" +
       "[data-sharako-chat] *{box-sizing:border-box}" +
       "[data-sharako-chat] button{cursor:pointer;font:inherit;color:inherit;background:none;border:0}" +
       ".sk-head{display:flex;align-items:center;gap:12px;padding:max(12px,env(safe-area-inset-top)) 16px 12px;border-bottom:1px solid rgba(245,245,243,.14)}" +
