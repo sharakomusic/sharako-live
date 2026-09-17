@@ -307,7 +307,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     vid.playsInline = true;
     vid.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:cover";
     var note = document.createElement("div");
-    note.textContent = document.querySelector("[data-sharako-line]") ? "ON THE LINE — SHOW HER" : "SHOW HER";
+    note.textContent = document.querySelector("[data-sharako-line]") ? "ON THE LINE — SNAP AS MANY AS YOU WANT" : "SNAP AS MANY AS YOU WANT";
     note.style.cssText = "position:absolute;top:max(1rem,env(safe-area-inset-top));left:0;right:0;text-align:center;letter-spacing:.22em;font-size:.7rem;color:#fff;text-shadow:0 1px 2px #000";
     var snapBtn = document.createElement("button");
     snapBtn.type = "button";
@@ -357,15 +357,16 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
       }
       finish(pic);
     };
+    wrap._n = 0;
     function finish(pic) {
+      wrap._n += 1;
       try { sendSight(pic); } catch (e) {}
-      try { fetch("/api/sight", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: pic }) }); } catch (e) {}
-      note.textContent = "GOT IT — STILL ON THE LINE";
-      var img = document.createElement("img");
-      img.src = pic;
-      img.style.cssText = "position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000";
-      wrap.appendChild(img);
-      setTimeout(function () { try { img.remove(); } catch (e) {} }, 1200);
+      try { fetch("/api/sight", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ image: pic, n: wrap._n }) }); } catch (e) {}
+      note.textContent = wrap._n === 1 ? "GOT IT — SNAP AGAIN" : (wrap._n + " SENT — SNAP AGAIN");
+      var flash = document.createElement("div");
+      flash.style.cssText = "position:absolute;inset:0;background:#fff;opacity:.55;pointer-events:none";
+      wrap.appendChild(flash);
+      setTimeout(function () { try { flash.remove(); } catch (e) {} }, 120);
     }
     closeBtn.onclick = function (e) {
       e.preventDefault();
