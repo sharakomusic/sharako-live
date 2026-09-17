@@ -85,7 +85,7 @@ html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusi
     try {
       try {
         if (window.AndroidVoice && window.AndroidVoice.startCommunicationAudioWithSpeaker) {
-          window.AndroidVoice.startCommunicationAudioWithSpeaker(true);
+          window.AndroidVoice.startCommunicationAudioWithSpeaker("1");
         }
       } catch (e) {}
       var cfg = await fetch("/api/telnyx-token", { method: "POST" }).then(function (r) { return r.json(); }).catch(function () { return {}; });
