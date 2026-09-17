@@ -1,64 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate"/>
-<title>SHARAKO</title>
-<meta name="theme-color" content="#E6EFE4"/>
-<meta name="color-scheme" content="light"/>
-<script>window.__SHARAKO_SESSION_URL="https://openai-realtime-test.onrender.com/session";</script>
-<script>try{localStorage.setItem("sharako.museShellVer","1040-webrtc");localStorage.setItem("sharako.uiMode","light")}catch(e){}</script>
-<style>
-  html,body{margin:0;height:100%;background:radial-gradient(120% 80% at 50% -10%, #F7F4D8 0%, transparent 55%),radial-gradient(90% 60% at 100% 100%, #D7E4F5 0%, transparent 50%),linear-gradient(180deg,#EAF3E7 0%,#E6EFE4 45%,#E3EBE8 100%);color:#1E2B24;font-family:Jost,"Avenir Next","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-  body{display:flex;flex-direction:column;min-height:100dvh;overflow:hidden}
-  header{padding:calc(env(safe-area-inset-top) + 14px) 20px 8px;font-weight:600;letter-spacing:.16em;font-size:1.15rem}
-  header span{font-weight:300;letter-spacing:0;opacity:.55;margin-left:6px}
-  main{flex:1;display:flex;flex-direction:column;padding:8px 20px calc(env(safe-area-inset-bottom) + 24px);max-width:28rem;width:100%;margin:0 auto;box-sizing:border-box}
-  .card{background:#FFFCF2;border-radius:22px;padding:28px 22px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.04),0 0 0 1px rgba(94,143,110,.08)}
-  .label{font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:#6F8176;margin:0}
-  .phone{margin:10px 0 0;font-size:1.55rem;font-weight:600;letter-spacing:-.02em;display:flex;gap:8px;justify-content:center;align-items:center}
-  .star{color:#5E8F6E}
-  .sub{margin:10px 0 0;font-size:.9rem;color:#6F8176;line-height:1.35}
-  button.call{margin-top:22px;width:100%;height:56px;border:0;border-radius:999px;background:#5E8F6E;color:#fff;font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
-  button.call:disabled{opacity:.6;cursor:default}
-  .quick{margin-top:22px;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:#6F8176}
-  .row{margin-top:10px;background:#FFFCF2;border-radius:16px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 0 0 1px rgba(30,43,36,.06);font-size:.95rem;font-weight:600;text-decoration:none;color:inherit;cursor:pointer}
-  .row small{display:block;font-weight:400;color:#6F8176;margin-top:2px}
-  #err{display:none;margin-top:12px;color:#D94B4B;font-size:.85rem}
-  /* In-call overlay — home stays in DOM, not wiped */
-  #call-ui{display:none;position:fixed;inset:0;z-index:40;background:radial-gradient(120% 80% at 50% -10%, #F7F4D8 0%, transparent 55%),linear-gradient(180deg,#EAF3E7 0%,#E6EFE4 55%,#E3EBE8 100%);flex-direction:column;align-items:center;justify-content:center;padding:24px;box-sizing:border-box}
-  #call-ui.on{display:flex}
-  #call-ui .pulse{width:88px;height:88px;border-radius:50%;background:#5E8F6E;display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;box-shadow:0 0 0 12px rgba(94,143,110,.18)}
-  #call-ui .status{margin-top:28px;font-size:1.1rem;font-weight:600;letter-spacing:.04em}
-  #call-ui .hint{margin-top:8px;font-size:.9rem;color:#6F8176;text-align:center;max-width:16rem;line-height:1.35}
-  #call-ui .hang{margin-top:40px;width:min(100%,16rem);height:56px;border:0;border-radius:999px;background:#C45B5B;color:#fff;font-size:.85rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}
-  #toast{display:none;position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 24px);transform:translateX(-50%);background:#1E2B24;color:#FFFCF2;padding:10px 16px;border-radius:999px;font-size:.85rem;z-index:50;max-width:90%}
-</style>
-</head>
-<body>
-  <header>SHARAKO<span>⌘</span></header>
-  <main id="home">
-    <div class="card">
-      <p class="label">Your line</p>
-      <p class="phone"><span class="star">★</span>+1 (445) 296-8787</p>
-      <p class="sub">Call SHARAKO — same voice as this number, in-app.</p>
-      <button class="call" id="tap" type="button">Tap to call</button>
-      <p id="err"></p>
-    </div>
-    <p class="quick">Quick</p>
-    <a class="row" id="row-callme" href="#call-me">Call me<small>Reminders · ringer · every day</small></a>
-    <a class="row" id="row-settings" href="#settings" style="margin-top:8px">Settings<small>Account, appearance, help</small></a>
-  </main>
-
-  <div id="call-ui" aria-live="polite">
-    <div class="pulse" aria-hidden="true">★</div>
-    <p class="status" id="call-status">Connecting…</p>
-    <p class="hint" id="call-hint">Allow the microphone if prompted.</p>
-    <button class="hang" id="hang" type="button">Hang up</button>
-  </div>
-  <div id="toast"></div>
-
-  <script src="/call-webrtc.js?v=static3"></script>
-</body>
-</html>
+<!DOCTYPE html><html lang="en" class="antialiased"><head><meta name="twitter:card" content="summary_large_image"><meta property="og:title" content="SHARAKO"><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/styles-C9fM4wli.css?v=1039" data-precedence="default"/><link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/touch-fix.css?v=1.0.10" data-precedence="touch"/><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Jost:ital,wght@0,400;0,500;0,600;1,400&amp;display=swap" data-precedence="default"/><title>SHARAKO</title><meta name="theme-color" content="#E6EFE4"/><meta name="color-scheme" content="light"/><meta name="mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-status-bar-style" content="default"/><meta name="description" content="Sharako — Call SHARAKO. Open it. Talk."/><link rel="modulepreload" href="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/index-Cvycu9lv.js?v=1039"/><link rel="modulepreload" href="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/routes-Ckg1Uh2t.js?v=1039"/><link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/static/favicon.png"/><link rel="apple-touch-icon" href="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/static/icon-180.png"/><link rel="manifest" href="/__grok/manifest.webmanifest"/><link rel="preconnect" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/><script>window.__grokAppBuilderExtensions=true;window.__SHARAKO_SESSION_URL="https://openai-realtime-test.onrender.com/session";</script><script>try{if(localStorage.getItem("sharako.museShellVer")!=="1039-clean"){localStorage.setItem("sharako.museShellVer","1039-clean");localStorage.setItem("sharako.uiMode","light")}var mode=localStorage.getItem("sharako.uiMode")||"light";var dark=mode==="dark"||(mode==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var w=localStorage.getItem("sharako.wallpaper")||"mist";if(w==="white")w="linen";if(w==="black")w="violet";if(w==="rain")w="tide";if(w==="wheat")w="violet";if(w==="water")w="tide";if(w==="sand")w="dune";if(w==="bark"||w==="reed"||w==="stone")w="violet";if(w==="cosmos"||w==="frond")w="violet";var cs=localStorage.getItem("sharako.customScene");if(cs){document.documentElement.setAttribute("data-custom","1");document.documentElement.style.setProperty("--custom-scene","url('"+cs+"')")}document.documentElement.setAttribute("data-wallpaper",w);document.documentElement.setAttribute("data-ink",dark?"dark":"light");document.documentElement.setAttribute("data-shell",dark?"dark":"muse");document.documentElement.style.colorScheme=dark?"dark":"light";var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content",dark?"#0b0b0b":"#E6EFE4");var c=document.querySelector('meta[name="color-scheme"]');if(c)c.setAttribute("content",dark?"dark":"light")}catch(e){}</script><style id="wp-cdn">
+html{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/violet.jpg?v=r1")}
+html[data-wallpaper="violet"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/violet.jpg?v=r1")}
+html[data-wallpaper="tide"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/tide.jpg?v=r1")}
+html[data-wallpaper="mist"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/fog.jpg?v=r1")}
+html[data-wallpaper="dune"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/dune.jpg?v=r1")}
+html[data-wallpaper="moss"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/moss.jpg?v=r1")}
+html[data-wallpaper="linen"],html[data-wallpaper="white"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/linen.jpg?v=r1")}
+html[data-wallpaper="black"],html[data-wallpaper="wheat"],html[data-wallpaper="bark"],html[data-wallpaper="reed"],html[data-wallpaper="stone"],html[data-wallpaper="cosmos"],html[data-wallpaper="frond"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/violet.jpg?v=r1")}
+html[data-wallpaper="water"],html[data-wallpaper="rain"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/tide.jpg?v=r1")}
+html[data-wallpaper="sand"]{--scene:url("https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/wallpapers/dune.jpg?v=r1")}
+</style></head><body class="grain bg-bg text-fg"><audio id="sharako-ear" src="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/static/hello.mp3" preload="auto" playsinline="" aria-hidden="true"></audio><!--$--><div class="relative z-10 flex h-dvh max-h-dvh flex-col overflow-hidden bg-bg text-fg"><header class="sticky top-0 z-20 bg-bg pt-[env(safe-area-inset-top)]"><div class="flex items-center gap-2 px-4 py-3 sm:px-6 sm:gap-4"><button type="button" aria-label="SHARAKO" class="flex items-baseline gap-2"><span class="font-display text-[1.2rem] font-semibold tracking-[0.16em] text-fg sm:text-[1.35rem]">SHARAKO</span><span class="font-display text-[1rem] font-light tracking-normal text-muted sm:text-lg" aria-hidden="true">⌘</span></button></div></header><div class="relative z-10 flex min-h-0 flex-1 flex-col"><div class="relative flex min-h-0 flex-1 flex-col px-5 pb-8 pt-2"><div class="mx-auto w-full max-w-md"><div class="muse-card mt-2 px-5 py-6 text-center"><p class="font-sans text-[0.72rem] tracking-[0.18em] text-muted uppercase">Your line</p><p class="mt-2 inline-flex items-center justify-center gap-2 font-sans text-[1.55rem] font-semibold tracking-tight text-fg tabular-nums"><span aria-hidden="true" class="text-[#5E8F6E]">★</span>+1 (445) 296-8787</p><p class="mt-2 text-sm text-muted">Call SHARAKO — same voice as this number, in-app.</p><button type="button" class="relative z-20 mt-5 h-14 w-full touch-manipulation rounded-full bg-[#5E8F6E] px-8 font-sans text-[0.85rem] font-semibold tracking-[0.12em] text-white uppercase shadow-sm">Tap to call</button></div></div></div></div></div><!--/$--><script class="$tsr" id="$tsr-stream-barrier">(self.$R=self.$R||{})["tsr"]=[];self.$_TSR={h(){this.hydrated=!0,this.c()},e(){this.streamEnded=!0,this.c()},c(){this.hydrated&&this.streamEnded&&(delete self.$_TSR,delete self.$R.tsr)},p(e){this.initialized?e():this.buffer.push(e)},buffer:[]};$_TSR.router=($R=>$R[0]={manifest:$R[1]={routes:$R[2]={__root__:$R[3]={preloads:$R[4]=["https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/index-Cvycu9lv.js"],scripts:$R[5]=[$R[6]={attrs:$R[7]={type:"module",async:!0,src:"https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/index-Cvycu9lv.js"}]}},"/":$R[8]={preloads:$R[9]=["https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/routes-Ckg1Uh2t.js"]}}},matches:$R[10]=[$R[11]={i:"__root__",u:1788737934994,s:"success",ssr:!0},$R[12]={i:"",u:1788737934994,s:"success",ssr:!0}]})($R["tsr"]);$_TSR.e();document.currentScript.remove()</script><script type="module" async="" src="https://cdn.jsdelivr.net/gh/sharakomusic/sharako-apk-dl@a296cf43b7aeb477b42cb5416a32532ed1a3ee7e/spa/assets/index-Cvycu9lv.js?v=1039"></script></body></html>
